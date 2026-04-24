@@ -60,7 +60,7 @@ export const ExerciseConsistencyCard = ({ range }: ExerciseConsistencyCardProps)
   };
 
   return (
-    <Card variant="outlined" sx={{ borderRadius: 3 }}>
+    <Card variant="outlined">
       <CardContent>
         <Stack
           direction="row"

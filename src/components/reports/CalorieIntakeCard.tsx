@@ -59,7 +59,7 @@ export const CalorieIntakeCard = ({ range }: CalorieIntakeCardProps) => {
   };
 
   return (
-    <Card variant="outlined" sx={{ borderRadius: 3 }}>
+    <Card variant="outlined">
       <CardContent>
         <Stack
           direction="row"

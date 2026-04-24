@@ -65,7 +65,7 @@ export const StreakHeatmapCard = ({ range }: StreakHeatmapCardProps) => {
   };
 
   return (
-    <Card variant="outlined" sx={{ borderRadius: 3 }}>
+    <Card variant="outlined">
       <CardContent>
         <Stack
           direction="row"

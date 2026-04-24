@@ -77,7 +77,7 @@ export const MacroSplitCard = ({ range }: MacroSplitCardProps) => {
   };
 
   return (
-    <Card variant="outlined" sx={{ borderRadius: 3 }}>
+    <Card variant="outlined">
       <CardContent>
         <Stack sx={{ mb: 1 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>

@@ -66,7 +66,7 @@ export const WeightTrendCard = ({ range }: WeightTrendCardProps) => {
   };
 
   return (
-    <Card variant="outlined" sx={{ borderRadius: 3 }}>
+    <Card variant="outlined">
       <CardContent>
         <Stack
           direction="row"

@@ -4,16 +4,11 @@ import {
   Button,
   Card,
   CardContent,
-  Chip,
   IconButton,
   Stack,
   Tooltip,
 } from '@mui/material';
-import {
-  ChevronLeft,
-  ChevronRight,
-  LocalFireDepartment,
-} from '@mui/icons-material';
+import { ChevronLeft, ChevronRight } from '@mui/icons-material';
 import { formatDayLabel, getTodayISO, useDiaryStore } from '@/stores/diaryStore';
 import { getMockDiary } from '@/lib/mockDiary';
 import { EnergySummary } from '@/components/diary/EnergySummary';
@@ -54,23 +49,7 @@ export const DiaryPage = () => {
           </IconButton>
         </Stack>
 
-        <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap' }}>
-          <Chip
-            icon={<LocalFireDepartment />}
-            label="0-day streak"
-            size="small"
-            color="warning"
-            variant="outlined"
-          />
-          <Chip
-            label="1 grace day"
-            size="small"
-            variant="outlined"
-            sx={{ color: 'text.secondary' }}
-          />
-        </Stack>
-
-        <Card variant="outlined" sx={{ borderRadius: 3 }}>
+        <Card variant="outlined">
           <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
             <Stack sx={{ gap: 2 }}>
               <EnergySummary totals={diary.totals} targets={diary.targets} />

@@ -41,7 +41,7 @@ export const ExerciseSection = ({ entries }: ExerciseSectionProps) => {
   };
 
   return (
-    <Card variant="outlined" sx={{ borderRadius: 3 }}>
+    <Card variant="outlined">
       <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
         <Stack
           direction="row"

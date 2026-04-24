@@ -37,7 +37,7 @@ export const SettingsPage = () => {
   return (
     <Box sx={{ maxWidth: 560, mx: 'auto', width: '100%', p: { xs: 2, sm: 3 } }}>
       <Stack sx={{ gap: 2 }}>
-        <Card variant="outlined" sx={{ borderRadius: 3 }}>
+        <Card variant="outlined">
           <CardContent>
             <Stack sx={{ gap: 0.5, mb: 2 }}>
               <Typography variant="subtitle2" color="text.secondary">
