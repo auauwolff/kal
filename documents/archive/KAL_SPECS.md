@@ -1,3 +1,7 @@
+> **Superseded by [`../KAL.md`](../KAL.md).** Kept for historical reference — prototype notes on SVG eye-tracking and the layered accessory system have been carried forward into the new doc.
+
+---
+
 # Kal Your Fitness Pal - Complete App Specifications
 
 ## Overview

@@ -1,3 +1,7 @@
+> **Superseded by [`../KAL.md`](../KAL.md).** Kept for historical reference — nutrition math, food-database strategy, and the roadmap have been consolidated (and the React Native stack choice was revised to PWA) in the new doc.
+
+---
+
 # Kal — Implementation Reference
 
 *Your fitness pal that evolves with you.*
