@@ -4,31 +4,39 @@
   "version": "0.0.0",
   "type": "module",
   "license": "MIT",
-  "homepage": "https://github.com/workos/template-convex-react-vite-authkit/#readme",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/workos/template-convex-react-vite-authkit.git"
-  },
-  "bugs": {
-    "url": "https://github.com/workos/template-convex-react-vite-authkit/issues"
-  },
   "scripts": {
-    "dev": "convex dev --start 'vite --open'",
+    "dev": "npm-run-all --parallel dev:frontend dev:backend",
+    "dev:frontend": "vite --open",
+    "dev:backend": "convex dev",
+    "predev": "convex dev --until-success && convex dashboard",
     "build": "tsc -b && vite build",
     "lint": "tsc && eslint .  --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "convex:ai-files:status": "convex ai-files status",
+    "convex:ai-files:update": "convex ai-files update"
   },
   "dependencies": {
+    "@convex-dev/eslint-plugin": "^2.0.0",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@fontsource/roboto": "^5.2.6",
+    "@mui/icons-material": "^7.3.6",
+    "@mui/material": "^7.3.6",
+    "@tanstack/react-router": "^1.143.4",
+    "@tanstack/react-router-devtools": "^1.143.4",
     "@workos-inc/authkit-react": "^0.16.1",
     "convex": "^1.35.1",
+    "echarts": "^6.0.0",
+    "echarts-for-react": "^3.0.6",
     "react": "^19.2.5",
-    "react-dom": "^19.2.5"
+    "react-dom": "^19.2.5",
+    "react-hot-toast": "^2.6.0",
+    "zustand": "^5.0.12"
   },
   "devDependencies": {
-    "@convex-dev/eslint-plugin": "^1.2.2",
     "@eslint/js": "^9.39.4",
-    "@tailwindcss/vite": "^4.2.2",
+    "@tanstack/router-plugin": "^1.143.4",
     "@types/node": "^24.12.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
@@ -37,16 +45,16 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
+    "npm-run-all2": "^8.0.4",
     "prettier": "^3.8.2",
-    "tailwindcss": "^4.2.2",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.58.1",
-    "vite": "^7.3.2"
+    "vite": "^7.3.2",
+    "vite-plugin-pwa": "^1.2.0"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "esbuild",
-      "@tailwindcss/oxide"
+      "esbuild"
     ]
   }
 }
