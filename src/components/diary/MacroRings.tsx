@@ -11,8 +11,8 @@ interface RingProps {
 
 const Ring = ({ label, current, target, unit, color }: RingProps) => {
   const theme = useTheme();
-  const size = 72;
-  const stroke = 8;
+  const size = 88;
+  const stroke = 9;
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
   const pct = target > 0 ? Math.min(current / target, 1.2) : 0;
@@ -54,10 +54,10 @@ const Ring = ({ label, current, target, unit, color }: RingProps) => {
             lineHeight: 1,
           }}
         >
-          <Typography variant="caption" sx={{ fontWeight: 700, fontSize: 14 }}>
+          <Typography variant="caption" sx={{ fontWeight: 700, fontSize: 16 }}>
             {Math.round(current)}
           </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ fontSize: 10 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ fontSize: 11 }}>
             / {Math.round(target)}
           </Typography>
         </Box>
@@ -85,13 +85,6 @@ export const MacroRings = ({ totals, targets }: MacroRingsProps) => {
         justifyContent: 'space-between',
       }}
     >
-      <Ring
-        label="Calories"
-        current={totals.calories}
-        target={targets.calories}
-        unit="kcal"
-        color={theme.palette.primary.main}
-      />
       <Ring
         label="Protein"
         current={totals.proteinG}
