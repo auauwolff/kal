@@ -7,6 +7,7 @@ import {
   IconButton,
   Stack,
   Typography,
+  useTheme,
 } from '@mui/material';
 import { Add as AddIcon, MoreHoriz } from '@mui/icons-material';
 import toast from 'react-hot-toast';
@@ -19,6 +20,7 @@ interface MealSectionProps {
 }
 
 export const MealSection = ({ mealType, entries }: MealSectionProps) => {
+  const theme = useTheme();
   const totals = entries.reduce(
     (acc, e) => ({
       calories: acc.calories + e.calories,
@@ -47,8 +49,18 @@ export const MealSection = ({ mealType, entries }: MealSectionProps) => {
               {MEAL_LABELS[mealType]}
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              {Math.round(totals.calories)} kcal · {Math.round(totals.proteinG)}P ·{' '}
-              {Math.round(totals.carbsG)}C · {Math.round(totals.fatG)}F
+              {Math.round(totals.calories)} kcal ·{' '}
+              <Box component="span" sx={{ color: theme.palette.success.main, fontWeight: 600 }}>
+                {Math.round(totals.proteinG)}P
+              </Box>{' '}
+              ·{' '}
+              <Box component="span" sx={{ color: theme.palette.warning.dark, fontWeight: 600 }}>
+                {Math.round(totals.carbsG)}C
+              </Box>{' '}
+              ·{' '}
+              <Box component="span" sx={{ color: theme.palette.error.light, fontWeight: 600 }}>
+                {Math.round(totals.fatG)}F
+              </Box>
             </Typography>
           </Stack>
           <IconButton size="small" color="secondary" onClick={handleAdd}>

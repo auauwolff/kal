@@ -104,7 +104,7 @@ export const MacroRings = ({ totals, targets }: MacroRingsProps) => {
         current={totals.fatG}
         target={targets.fatG}
         unit="g"
-        color={theme.palette.secondary.main}
+        color={theme.palette.error.light}
       />
     </Stack>
   );
