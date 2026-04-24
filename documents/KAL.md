@@ -6,6 +6,12 @@ This is the single canonical document for the Kal project. It supersedes `archiv
 
 *Last updated: 2026-04-24 — Owner: Felipe (fewo@dhigroup.com)*
 
+## Current status
+
+- ✅ **Phase 0 — Scaffold** (2026-04-24): Vite + React 19 + MUI + Zustand + TanStack Router + Convex + WorkOS AuthKit + `vite-plugin-pwa` all wired. Installs to phone via `public/manifest.json`.
+- ✅ **Phase 2 — App shell** (2026-04-24): sticky AppHeader (Kal icon · title · dark-mode · avatar menu) + 3-tab BottomNav (Diary · Reports · Settings). Diary and Reports rendered with **mock data** in shapes matching §6.
+- ⏭️ **Next:** Convex schema + real queries — widen `convex/schema.ts` to cover `users` extensions, `meal_logs`, `exercise_logs`, `weights`, `favorites`, `meal_templates` via `@convex-dev/migrations`; then replace `src/lib/mockDiary.ts` + `src/lib/mockReports.ts` with Convex queries. After that: Phase 1 AUSNUT ETL → real food DB → real add-food flow.
+
 ---
 
 ## 1. Context & Goal
@@ -57,7 +63,7 @@ Distilled from research across Reddit (r/loseit, r/MacroFactor, r/Cronometer), A
 | State (UI only) | Zustand | `surf-mates/src/stores/mapStore.ts` pattern |
 | Routing | TanStack Router | `cf-app`, `meccanopoly` |
 | Backend | Convex (real-time, TS-native) | All our Convex apps; real-time fits pet + future social |
-| Auth | Convex Auth (swap to Better Auth only if Phase 5 needs social login) | `clocker-convex`, `sprint-planner` |
+| Auth | WorkOS AuthKit (already wired in `src/main.tsx` via `ConvexProviderWithAuthKit`) | `surf-mates` wiring pattern |
 | PWA | `vite-plugin-pwa` (installable, offline shell) | `petrol-saver`, `surf-mates` |
 | Charts | ECharts via `echarts-for-react` | `petrol-saver`, `clocker-convex` |
 | Barcode | `html5-qrcode` (progressive-enhance to `BarcodeDetector` on Android Chrome 83+) | Research: best PWA-compatible scanner in 2026 |
@@ -266,6 +272,25 @@ Users don't need absolute accuracy — they need consistent-enough tracking for 
 
 **Indexes:** `by_user_date`.
 
+### `exercise_logs` (Phase 2)
+
+```typescript
+{
+  _id: Id<"exercise_logs">,
+  user_id: Id<"users">,
+  date: string,                                     // YYYY-MM-DD
+  type: "strength" | "cardio" | "sports" | "walk" | "other",
+  duration_min: number,
+  intensity: "light" | "moderate" | "hard",
+  notes?: string,
+  logged_at: number,
+}
+```
+
+**Indexes:** `by_user_date`.
+
+Exercise is logged here but **never added to the calorie budget** (Design Principle §2.6). Feeds pet `strength` / `vitality` in Phase 4 and Reports consistency charts in Phase 2.
+
 ### `meal_templates` (Phase 2)
 
 ```typescript
@@ -301,18 +326,58 @@ All schema changes after Phase 1 use the **widen → migrate → narrow** workfl
 
 ---
 
-## 7. Logging UX — the make-or-break
+## 7. App UX — the make-or-break
 
-### Required in Phase 2 (non-negotiable)
+The logging loop is the whole game. Everything here is Phase 2 unless marked otherwise. Layout references: `petrol-saver` for the top bar + bottom nav pattern, Cronometer for meal grouping, Foodvisor for Reports-style graphs.
+
+### App chrome
+
+- **Top app bar:** user avatar (left, opens a profile/settings menu), screen title in the middle, gem balance chip on the right (hidden in Phase 2, appears in Phase 3). MUI `AppBar` with sticky positioning.
+- **Bottom nav (Phase 2):** three tabs — **Diary** · **Reports** · **Settings**. Add **Shop** in Phase 3, **Kal** in Phase 4. MUI `BottomNavigation`, clear active state.
+- **PWA shell:** installable, matching status-bar theme color, offline-safe diary page (last-logged data cached via Convex local cache + service worker).
+
+### Diary page (top to bottom)
+
+1. **Day header row** — `‹ prev` · day label (Today / Yesterday / weekday + date) · `next ›` (disabled for future dates). Tap the label to jump back to today. Keeps the user anchored when scrolling back to copy-from-day.
+2. **Streak chip** — current streak · grace days remaining (Phase 3+). Present as a quiet chip in Phase 2 so the hook is visible from day one.
+3. **Energy summary** — ECharts radial gauge for consumed vs daily calorie target (colour-graded: green inside ±10%, amber outside, red beyond 20%). Under it, a thin stacked-bar showing protein / carbs / fat vs targets. Compact — must fit above the fold on a phone.
+4. **Macro progress rings** — P / C / F / Cal, Duolingo-style. Taps open a breakdown sheet with per-meal contributions.
+5. **Meal sections: Breakfast · Lunch · Dinner · Snack** — each a card with summed calories + macro chips, expandable entry list, `+` to add food. Tap any entry to edit quantity or delete.
+6. **Exercise section** — separate card below meals (see below). Visually distinct so it never gets confused with food logging.
+7. **Day actions row** (sticky or bottom of diary) — **Copy Yesterday** · **Quick-Add** · **Templates** · **Recent**. Exposes the fast-log features as big, thumb-reachable buttons.
+
+### Exercise logging
+
+Backed by the `exercise_logs` table (see §6). Types: `strength` · `cardio` · `sports` · `walk` · `other`. Per log: type, duration (min), intensity (`light` | `moderate` | `hard`), optional notes.
+
+**Exercise NEVER adds to the calorie budget.** Design Principle §2.6 is load-bearing here — exercise calorie estimates are ±30–50% accurate and breaking this rule causes the plateaus that sink MFP users. What exercise *does*:
+- Feeds the pet's `strength` and `vitality` stats in Phase 4.
+- Shows up in Reports as a weekly consistency chart (Phase 2).
+- Powers Phase 3 missions ("hit 3 strength sessions this week → gems").
+
+### Reports page (Phase 2)
+
+Foodvisor- and Cronometer-inspired trend views. Each card supports a 7 / 30 / 90-day toggle; charts via ECharts.
+
+1. **Weight trend** — line chart + 7-day rolling trend overlay. Shows latest weight + delta vs 7 days ago + delta vs 30 days ago. Quick-log button on the card.
+2. **Calorie intake** — daily bars with the target as a reference line. Shows week-over-week average. Highlights days outside ±15% of target.
+3. **Macro split** — stacked area chart (P/C/F per day), with 7-day averages vs targets.
+4. **Streak history** — calendar heatmap (GitHub-contribution style), colour-graded by whether the daily calorie target was hit.
+5. **Exercise consistency** — weekly stacked bars by exercise type. Minutes or sessions toggle.
+6. **Nutrient coverage** (stretch — wires up once AUSNUT micros are in the `foods` table) — Cronometer-style grid of daily % of RDI for the 20 key micros.
+
+All data via Convex queries — no `useEffect` polling (§3 conventions).
+
+### Fast-log features (non-negotiable in Phase 2)
 
 1. **Recent tab** — last 10 foods, one-tap re-log.
-2. **Copy Yesterday** button — huge, people eat similar day-to-day.
-3. **Meal templates** — "my usual breakfast" as a reusable entry.
-4. **Quick-Add calories** — escape hatch for social meals where exact logging is impossible.
-5. **Barcode scan** — html5-qrcode → match local `foods.barcode` first, fall back to Open Food Facts HTTP action, cache the result into `foods` with `source: "openfoodfacts_cache"`.
-6. **Favorites** — starred foods surface first in search.
-7. **Fast search** — fuzzy match on `searchable_tokens`. Client-side debounce.
-8. **Macro progress rings**, not bars — more visually interesting than Cronometer's flat dashboard, matches the Duolingo-style fun bar.
+2. **Copy Yesterday** button — people eat similar day-to-day; dramatic friction reduction.
+3. **Copy from any day** — secondary action inside the day header. Pick any previous day from a date picker, bulk-copy all its meal entries into the current day.
+4. **Meal templates** — "my usual breakfast" as a saved, re-loggable group.
+5. **Quick-Add calories** — escape hatch for social meals where exact logging is impossible.
+6. **Barcode scan** — html5-qrcode → match local `foods.barcode` first, fall back to Open Food Facts HTTP action, cache the result into `foods` with `source: "openfoodfacts_cache"`.
+7. **Favorites** — starred foods surface first in search.
+8. **Fast search** — fuzzy match on `searchable_tokens`. Client-side debounce.
 
 ### Deferred to Phase 6
 
@@ -348,12 +413,15 @@ Each phase has a concrete **Done when** gate. No phase graduates without it.
 
 ### Phase 2 — Calorie tracker MVP (2 weeks)
 
+- **App shell:** top sticky AppHeader (Kal icon · title · dark-mode · avatar menu) + 3-tab BottomNav (Diary · Reports · Settings); PWA `manifest.json` + icon, installable on iOS/Android. See §7 "App chrome".
 - **Onboarding:** age, sex, height, weight, goal (lose / maintain / gain / recomp), activity level → auto-calc targets. User can override each.
-- **Daily diary page:** four sections (breakfast / lunch / dinner / snack), totals at top, macro progress rings.
+- **Diary page** (full layout in §7): day-nav header, streak chip, ECharts energy gauge, macro rings, 4 meal sections (breakfast / lunch / dinner / snack), exercise section, day-actions row.
 - **Add food flow:** search → pick → quantity (g + common portions dropdown) → log.
-- **Fast-log:** Recent, Copy Yesterday, Favorites, Meal Templates, Quick-Add.
-- **Barcode scan** via html5-qrcode.
-- **Weight tracking:** log page + 30/90-day weekly-trend ECharts.
+- **Fast-log:** Recent, Copy Yesterday, Copy-from-any-day, Favorites, Meal Templates, Quick-Add.
+- **Barcode scan** via html5-qrcode, local-first then Open Food Facts fallback.
+- **Exercise log:** add-entry flow (type + duration + intensity); no calorie credit, ever.
+- **Weight tracking:** quick-log page + integration into the Reports Weight card.
+- **Reports page** (full layout in §7): weight trend · calorie intake · macro split · streak heatmap · exercise consistency. 7 / 30 / 90-day toggle.
 - **Weekly adjustment** running as a Convex cron (Sunday 02:00 AEST).
 - **Export** raw data as CSV (personal safety net).
 
@@ -482,7 +550,7 @@ interface AccessoryItem {
 
 ## 11. Open questions / deferred decisions
 
-- **Auth upgrade:** Convex Auth is fine for solo use. Revisit Better Auth (Google sign-in, `gate-hunter` pattern) if Phase 5 lands.
+- **Auth upgrade:** WorkOS AuthKit is already wired — covers Google / email sign-in out of the box, so no swap needed for Phase 5. Revisit only if WorkOS pricing bites at scale.
 - **Cronometer import:** does Cronometer export user data? Would be useful for seeding Felipe's history in Phase 2. Research task.
 - **Apple Health / Google Fit:** PWA can't read these. If it matters enough to Felipe, that's the trigger for a PWA → RN decision.
 - **FatSecret fallback:** only pull in if Open Food Facts barcode miss rate is painful in practice. Measure during Phase 2.
@@ -505,9 +573,12 @@ interface AccessoryItem {
 
 ## 13. Next actions (right now)
 
-1. **Commit this doc** as the source of truth.
-2. **Phase 0:** scaffold the Vite + Convex + PWA app, install to Felipe's phone.
-3. **Phase 1:** download AUSNUT 2023 from `data.gov.au`, write the ETL, seed `foods`.
-4. **Phase 2:** ship a usable daily diary. Dogfood for 14 days. Adjust.
+Phase 0 scaffold and the Phase 2 app-shell UI (Diary + Reports + Settings skeletons, mock data) shipped on 2026-04-24.
+
+1. **Wire the Convex schema** for `users` extensions, `meal_logs`, `exercise_logs`, `weights`, `favorites`, `meal_templates`. Use `@convex-dev/migrations` (widen → migrate → narrow) per the `convex-migration-helper` skill.
+2. **Replace mock data with Convex queries.** Swap `src/lib/mockDiary.ts` → `api.meal_logs.getByDate` + `api.exercise_logs.getByDate`; swap `src/lib/mockReports.ts` → weight/calorie/macro/streak/exercise queries. UI already matches §6 shapes, so this is mostly a rename.
+3. **Phase 1 food DB.** Download AUSNUT 2023 + AFCD from `data.gov.au`, write the ETL into `foods`, add the Open Food Facts barcode HTTP action. Admin spot-check query.
+4. **Phase 2 fill-in.** Onboarding (goals auto-calc), real food-search + add-food flow, barcode scanner wiring, weight quick-log, weekly-adjustment Convex cron, CSV export.
+5. **Dogfood for 14 consecutive days** without switching back to Cronometer — the Phase 2 done-when gate.
 
 Pet and social come later. Logging is the whole game until it feels better than Cronometer.

@@ -1,0 +1,14 @@
+{
+  "name": "Kal — Your Fitness Pal",
+  "short_name": "Kal",
+  "description": "A fun, Aussie-first calorie tracker that feeds your virtual pet Kal.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#0077B6",
+  "icons": [
+    { "src": "/kal-fat.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

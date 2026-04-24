@@ -2,15 +2,15 @@ import { createTheme, type ThemeOptions } from '@mui/material/styles';
 
 const palette = {
   primary: {
-    main: '#0077B6',
-    light: '#00B4D8',
-    dark: '#023E8A',
+    main: '#F77F00',
+    light: '#FFC957',
+    dark: '#D65F00',
     contrastText: '#ffffff',
   },
   secondary: {
-    main: '#F77F00',
-    light: '#FCBF49',
-    dark: '#D65F00',
+    main: '#279977',
+    light: '#39E5BD',
+    dark: '#1D3F34',
     contrastText: '#ffffff',
   },
   error: {
@@ -29,9 +29,9 @@ const palette = {
     dark: '#00a67d',
   },
   info: {
-    main: '#118ab2',
-    light: '#4db8da',
-    dark: '#0a5f7a',
+    main: '#0077B6',
+    light: '#00B4D8',
+    dark: '#023E8A',
   },
 };
 

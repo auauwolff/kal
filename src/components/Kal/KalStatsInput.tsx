@@ -23,6 +23,9 @@ const KalStatsInput = () => {
   const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
+    // Sync external zustand updates into local draft state. Phase 4 demo code —
+    // revisit with the proper derived-state pattern when this screen is rebuilt.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLocalStats(userStats);
     setHasChanges(false);
   }, [userStats]);
