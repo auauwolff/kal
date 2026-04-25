@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { todayISO } from '@/lib/date';
 import { calorieTargetForGoal, macroTargets } from '@/lib/nutrition';
 import type {
   BodyStats,
@@ -13,14 +14,6 @@ const DEFAULT_TARGETS: UserTargets = {
   proteinG: { value: 165, isOverride: false },
   carbsG: { value: 260, isOverride: false },
   fatG: { value: 85, isOverride: false },
-};
-
-const todayISO = () => {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
 };
 
 interface UserStore extends UserProfile {

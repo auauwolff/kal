@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   Box,
   Card,
@@ -14,6 +13,7 @@ import {
   type Sex,
 } from '@/lib/nutrition';
 import type { BodyStats } from '@/lib/userTypes';
+import { useFormDraft } from '@/hooks/useFormDraft';
 import { useUserStore } from '@/stores/userStore';
 
 const ACTIVITY_ORDER: ActivityLevel[] = [
@@ -35,7 +35,7 @@ interface FormState {
   activity: ActivityLevel;
 }
 
-const initial = (stats: BodyStats | null): FormState => ({
+const toForm = (stats: BodyStats | null): FormState => ({
   heightCm: toFieldString(stats?.heightCm),
   weightKg: toFieldString(stats?.weightKg),
   age: toFieldString(stats?.age),
@@ -43,7 +43,7 @@ const initial = (stats: BodyStats | null): FormState => ({
   activity: stats?.activity ?? 'moderate',
 });
 
-const tryParseStats = (s: FormState): BodyStats | null => {
+const fromForm = (s: FormState): BodyStats | null => {
   const heightCm = Number(s.heightCm);
   const weightKg = Number(s.weightKg);
   const age = Number(s.age);
@@ -63,25 +63,14 @@ const tryParseStats = (s: FormState): BodyStats | null => {
 export const BodyStatsCard = () => {
   const stats = useUserStore((s) => s.bodyStats);
   const setBodyStats = useUserStore((s) => s.setBodyStats);
-  const [form, setForm] = useState<FormState>(() => initial(stats));
 
-  const commit = (next: FormState) => {
-    const parsed = tryParseStats(next);
-    if (parsed) setBodyStats(parsed);
-  };
-
-  const updateField =
-    <K extends keyof FormState>(key: K) =>
-    (value: FormState[K]) =>
-      setForm((prev) => ({ ...prev, [key]: value }));
-
-  const onSelectChange =
-    <K extends 'sex' | 'activity'>(key: K) =>
-    (value: FormState[K]) => {
-      const next = { ...form, [key]: value };
-      setForm(next);
-      commit(next);
-    };
+  const { form, setField, commit, commitWith } = useFormDraft({
+    source: stats,
+    sourceKey: `${stats?.heightCm}|${stats?.weightKg}|${stats?.age}|${stats?.sex}|${stats?.activity}`,
+    toForm,
+    fromForm,
+    onCommit: setBodyStats,
+  });
 
   return (
     <Card variant="outlined">
@@ -108,8 +97,8 @@ export const BodyStatsCard = () => {
               type="number"
               inputMode="numeric"
               value={form.heightCm}
-              onChange={(e) => updateField('heightCm')(e.target.value)}
-              onBlur={() => commit(form)}
+              onChange={(e) => setField('heightCm', e.target.value)}
+              onBlur={commit}
               slotProps={{ input: { endAdornment: 'cm' } }}
               fullWidth
             />
@@ -118,8 +107,8 @@ export const BodyStatsCard = () => {
               type="number"
               inputMode="decimal"
               value={form.weightKg}
-              onChange={(e) => updateField('weightKg')(e.target.value)}
-              onBlur={() => commit(form)}
+              onChange={(e) => setField('weightKg', e.target.value)}
+              onBlur={commit}
               slotProps={{ input: { endAdornment: 'kg' } }}
               fullWidth
             />
@@ -128,15 +117,15 @@ export const BodyStatsCard = () => {
               type="number"
               inputMode="numeric"
               value={form.age}
-              onChange={(e) => updateField('age')(e.target.value)}
-              onBlur={() => commit(form)}
+              onChange={(e) => setField('age', e.target.value)}
+              onBlur={commit}
               fullWidth
             />
             <TextField
               select
               label="Sex"
               value={form.sex}
-              onChange={(e) => onSelectChange('sex')(e.target.value as Sex)}
+              onChange={(e) => commitWith({ sex: e.target.value as Sex })}
               fullWidth
             >
               <MenuItem value="male">Male</MenuItem>
@@ -149,7 +138,7 @@ export const BodyStatsCard = () => {
             label="Activity level"
             value={form.activity}
             onChange={(e) =>
-              onSelectChange('activity')(e.target.value as ActivityLevel)
+              commitWith({ activity: e.target.value as ActivityLevel })
             }
             fullWidth
           >

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
   Box,
   Card,
@@ -14,6 +14,8 @@ import {
   type GoalType,
 } from '@/lib/nutrition';
 import type { WeightGoal } from '@/lib/userTypes';
+import { todayISO } from '@/lib/date';
+import { useFormDraft } from '@/hooks/useFormDraft';
 import { useUserStore } from '@/stores/userStore';
 
 const GOAL_OPTIONS: { value: GoalType; label: string }[] = [
@@ -22,14 +24,6 @@ const GOAL_OPTIONS: { value: GoalType; label: string }[] = [
   { value: 'gain', label: 'Gain' },
   { value: 'recomp', label: 'Recomp' },
 ];
-
-const todayISO = () => {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-};
 
 const defaultTargetDate = () => {
   const d = new Date();
@@ -46,10 +40,12 @@ interface FormState {
   targetDateISO: string;
 }
 
-const initial = (
-  goal: WeightGoal | null,
-  currentWeightKg: number | undefined,
-): FormState => ({
+interface Source {
+  goal: WeightGoal | null;
+  currentWeightKg: number | undefined;
+}
+
+const toForm = ({ goal, currentWeightKg }: Source): FormState => ({
   type: goal?.type ?? 'maintain',
   targetWeightKg: goal?.targetWeightKg
     ? String(goal.targetWeightKg)
@@ -59,46 +55,41 @@ const initial = (
   targetDateISO: goal?.targetDateISO ?? defaultTargetDate(),
 });
 
-const tryParseGoal = (
-  s: FormState,
-  currentWeightKg: number | undefined,
-): WeightGoal | null => {
-  if (!s.targetDateISO) return null;
-  if (s.type === 'maintain') {
-    return {
-      type: 'maintain',
-      targetWeightKg: currentWeightKg ?? 0,
-      targetDateISO: s.targetDateISO,
-    };
-  }
-  const targetWeightKg = Number(s.targetWeightKg);
-  if (!Number.isFinite(targetWeightKg) || targetWeightKg <= 0) return null;
-  return { type: s.type, targetWeightKg, targetDateISO: s.targetDateISO };
-};
+const fromForm =
+  (currentWeightKg: number | undefined) =>
+  (s: FormState): WeightGoal | null => {
+    if (!s.targetDateISO) return null;
+    if (s.type === 'maintain') {
+      return {
+        type: 'maintain',
+        targetWeightKg: currentWeightKg ?? 0,
+        targetDateISO: s.targetDateISO,
+      };
+    }
+    const targetWeightKg = Number(s.targetWeightKg);
+    if (!Number.isFinite(targetWeightKg) || targetWeightKg <= 0) return null;
+    return { type: s.type, targetWeightKg, targetDateISO: s.targetDateISO };
+  };
 
 export const WeightGoalCard = () => {
   const stats = useUserStore((s) => s.bodyStats);
   const goal = useUserStore((s) => s.goal);
   const setGoal = useUserStore((s) => s.setGoal);
-  const [form, setForm] = useState<FormState>(() =>
-    initial(goal, stats?.weightKg),
-  );
 
-  const commit = (next: FormState) => {
-    const parsed = tryParseGoal(next, stats?.weightKg);
-    if (parsed) setGoal(parsed);
-  };
+  const currentWeightKg = stats?.weightKg;
 
-  const onTypeChange = (next: GoalType) => {
-    const nextForm = { ...form, type: next };
-    setForm(nextForm);
-    commit(nextForm);
-  };
+  const { form, setField, commit, commitWith } = useFormDraft({
+    source: { goal, currentWeightKg },
+    sourceKey: `${goal?.type}|${goal?.targetWeightKg}|${goal?.targetDateISO}|${currentWeightKg}`,
+    toForm,
+    fromForm: fromForm(currentWeightKg),
+    onCommit: setGoal,
+  });
 
   // Live preview of the implied weekly rate, only when we have full info.
   const ratePreview = useMemo(() => {
     if (!stats) return null;
-    const parsed = tryParseGoal(form, stats.weightKg);
+    const parsed = fromForm(stats.weightKg)(form);
     if (!parsed) return null;
     const { weeklyDeltaKg, clamped } = calorieTargetForGoal({
       ...stats,
@@ -131,7 +122,7 @@ export const WeightGoalCard = () => {
             color="primary"
             size="small"
             onChange={(_, value: GoalType | null) => {
-              if (value) onTypeChange(value);
+              if (value) commitWith({ type: value });
             }}
           >
             {GOAL_OPTIONS.map((opt) => (
@@ -156,13 +147,8 @@ export const WeightGoalCard = () => {
                 type="number"
                 inputMode="decimal"
                 value={form.targetWeightKg}
-                onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    targetWeightKg: e.target.value,
-                  }))
-                }
-                onBlur={() => commit(form)}
+                onChange={(e) => setField('targetWeightKg', e.target.value)}
+                onBlur={commit}
                 slotProps={{ input: { endAdornment: 'kg' } }}
                 fullWidth
               />
@@ -171,11 +157,9 @@ export const WeightGoalCard = () => {
               label="Target date"
               type="date"
               value={form.targetDateISO}
-              onChange={(e) => {
-                const next = { ...form, targetDateISO: e.target.value };
-                setForm(next);
-                commit(next);
-              }}
+              onChange={(e) =>
+                commitWith({ targetDateISO: e.target.value })
+              }
               slotProps={{ inputLabel: { shrink: true } }}
               fullWidth
             />

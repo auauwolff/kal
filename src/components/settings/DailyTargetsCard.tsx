@@ -11,15 +11,8 @@ import {
 import { RestartAlt } from '@mui/icons-material';
 import { calorieTargetForGoal, macroTargets } from '@/lib/nutrition';
 import type { UserTargets } from '@/lib/userTypes';
+import { todayISO } from '@/lib/date';
 import { useUserStore } from '@/stores/userStore';
-
-const todayISO = () => {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-};
 
 interface FieldDef {
   key: keyof UserTargets;
