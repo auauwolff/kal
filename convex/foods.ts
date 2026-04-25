@@ -69,18 +69,99 @@ type IngestItem = {
   commonPortions: { label: string; grams: number }[];
 };
 
+const normalizeSearch = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+
+const sourcePriority: Record<IngestItem['source'], number> = {
+  afcd: 40,
+  ausnut: 35,
+  branded_au: 18,
+  chain: 16,
+  user_contributed: 8,
+  usda: 4,
+  openfoodfacts_cache: 0,
+};
+
+const scoreFoodMatch = (
+  food: {
+    source: IngestItem['source'];
+    name: string;
+    brand?: string;
+    searchText: string;
+  },
+  normalizedQuery: string,
+): number => {
+  const queryTerms = normalizedQuery.split(/\s+/).filter(Boolean);
+  const name = normalizeSearch(food.name);
+  const brand = normalizeSearch(food.brand ?? '');
+  const searchText = normalizeSearch(food.searchText);
+
+  let score = sourcePriority[food.source] ?? 0;
+
+  if (name === normalizedQuery) score += 1000;
+  else if (brand && `${brand} ${name}` === normalizedQuery) score += 950;
+  else if (name.startsWith(normalizedQuery)) score += 700;
+  else if (brand && brand.startsWith(normalizedQuery)) score += 500;
+  else if (searchText.startsWith(normalizedQuery)) score += 450;
+  else if (name.includes(normalizedQuery)) score += 300;
+  else if (brand && brand.includes(normalizedQuery)) score += 220;
+  else if (searchText.includes(normalizedQuery)) score += 150;
+
+  for (const term of queryTerms) {
+    if (name === term) score += 100;
+    else if (name.startsWith(term)) score += 50;
+    else if (name.includes(term)) score += 24;
+
+    if (brand === term) score += 70;
+    else if (brand.startsWith(term)) score += 40;
+    else if (brand.includes(term)) score += 18;
+
+    if (searchText.includes(term)) score += 8;
+  }
+
+  if (queryTerms.length > 1 && queryTerms.every((term) => name.includes(term))) {
+    score += 160;
+  }
+  if (
+    queryTerms.length > 1 &&
+    brand &&
+    queryTerms.every((term) => `${brand} ${name}`.includes(term))
+  ) {
+    score += 90;
+  }
+
+  return score;
+};
+
 export const searchFoods = query({
   args: {
     query: v.string(),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, { query, limit }) => {
-    const q = query.trim().toLowerCase();
-    if (q.length === 0) return [];
-    return await ctx.db
+    const normalizedQuery = normalizeSearch(query);
+    if (normalizedQuery.length === 0) return [];
+
+    const requestedLimit = Math.max(1, Math.min(limit ?? 25, 50));
+    const candidates = await ctx.db
       .query('foods')
-      .withSearchIndex('search_text', (qb) => qb.search('searchText', q))
-      .take(limit ?? 25);
+      .withSearchIndex('search_text', (qb) => qb.search('searchText', normalizedQuery))
+      .take(Math.min(requestedLimit * 4, 100));
+
+    return candidates
+      .map((food) => ({
+        food,
+        score: scoreFoodMatch(food, normalizedQuery),
+      }))
+      .sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return a.food.name.localeCompare(b.food.name);
+      })
+      .slice(0, requestedLimit)
+      .map(({ food }) => food);
   },
 });
 

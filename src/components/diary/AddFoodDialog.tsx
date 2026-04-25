@@ -3,6 +3,7 @@ import {
   AppBar,
   Box,
   Button,
+  Chip,
   Dialog,
   Divider,
   IconButton,
@@ -49,6 +50,16 @@ const useDebounce = <T,>(value: T, delayMs: number): T => {
 };
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
+
+const SOURCE_LABELS: Record<Doc<'foods'>['source'], string> = {
+  afcd: 'AFCD',
+  ausnut: 'AUSNUT',
+  branded_au: 'Brand',
+  chain: 'Chain',
+  usda: 'USDA',
+  user_contributed: 'Custom',
+  openfoodfacts_cache: 'Barcode',
+};
 
 export const AddFoodDialog = ({ open, mealType, onClose }: AddFoodDialogProps) => {
   const [search, setSearch] = useState('');
@@ -265,13 +276,25 @@ export const AddFoodDialog = ({ open, mealType, onClose }: AddFoodDialogProps) =
                   return (
                     <ListItemButton key={food._id} onClick={() => handlePick(food)}>
                       <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                        <Typography
-                          variant="body2"
-                          sx={{ fontWeight: 500 }}
-                          noWrap
+                        <Stack
+                          direction="row"
+                          gap={1}
+                          alignItems="center"
+                          sx={{ minWidth: 0, mb: 0.25 }}
                         >
-                          {food.name}
-                        </Typography>
+                          <Typography
+                            variant="body2"
+                            sx={{ fontWeight: 500, minWidth: 0, flexGrow: 1 }}
+                            noWrap
+                          >
+                            {food.name}
+                          </Typography>
+                          <Chip
+                            size="small"
+                            label={SOURCE_LABELS[food.source]}
+                            sx={{ height: 20, '& .MuiChip-label': { px: 0.75 } }}
+                          />
+                        </Stack>
                         <Typography variant="caption" color="text.secondary" noWrap>
                           {food.brand ? `${food.brand} · ` : ''}
                           {food.defaultServingG} g · {servingKcal} kcal
@@ -286,11 +309,14 @@ export const AddFoodDialog = ({ open, mealType, onClose }: AddFoodDialogProps) =
         </Box>
       ) : (
         <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {picked.brand && (
-            <Typography variant="body2" color="text.secondary">
-              {picked.brand}
-            </Typography>
-          )}
+          <Stack direction="row" gap={1} alignItems="center" flexWrap="wrap">
+            <Chip size="small" label={SOURCE_LABELS[picked.source]} />
+            {picked.brand && (
+              <Typography variant="body2" color="text.secondary">
+                {picked.brand}
+              </Typography>
+            )}
+          </Stack>
 
           <Stack direction="row" gap={2} alignItems="flex-start">
             <TextField
