@@ -5,14 +5,21 @@ import {
 } from '@mui/material';
 import {
   RestaurantMenu as DiaryIcon,
-  Pets as KalIcon,
   ShowChart as StatsIcon,
 } from '@mui/icons-material';
 import { useNavigate, useRouterState } from '@tanstack/react-router';
 
+const KalIcon = () => (
+  <img
+    src="/kal-fat.svg"
+    alt="Kal"
+    style={{ width: 40, height: 40, display: 'block' }}
+  />
+);
+
 const navItems = [
   { label: 'Diary', icon: <DiaryIcon />, path: '/' },
-  { label: 'Kal', icon: <KalIcon />, path: '/kal' },
+  { label: '', icon: <KalIcon />, path: '/kal' },
   { label: 'Stats', icon: <StatsIcon />, path: '/stats' },
 ];
 
