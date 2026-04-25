@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   AppBar,
   Avatar,
@@ -9,18 +9,132 @@ import {
   ListItemIcon,
   Menu,
   MenuItem,
+  Stack,
   Toolbar,
+  Tooltip,
+  Typography,
+  useMediaQuery,
 } from '@mui/material';
-import { Logout, Settings as SettingsIcon } from '@mui/icons-material';
+import { keyframes } from '@emotion/react';
+import {
+  AddCircleOutline,
+  Diamond,
+  Logout,
+  Settings as SettingsIcon,
+} from '@mui/icons-material';
 import { useAuth } from '@workos-inc/authkit-react';
 import { useNavigate } from '@tanstack/react-router';
+import { useWebHaptics } from 'web-haptics/react';
 import { DarkModeToggle } from '@/components/DarkModeToggle';
+import {
+  useParticles,
+  type EmojiOption,
+} from '@/components/ParticlesProvider';
+import { playGemSound } from '@/lib/gemSound';
+import { useGemsStore } from '@/stores/gemsStore';
+
+const shake = keyframes`
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  20%      { transform: translate(-3px, 2px) rotate(-12deg); }
+  40%      { transform: translate(3px, -2px) rotate(12deg); }
+  60%      { transform: translate(-2px, 1px) rotate(-8deg); }
+  80%      { transform: translate(2px, -1px) rotate(6deg); }
+`;
+
+const pop = keyframes`
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.6); }
+  100% { transform: scale(1); }
+`;
+
+// Gem-themed emoji set with weighted distribution. Same shape as the
+// lochie/web-haptics demo's "buzz" preset (bees + honey + flowers) but
+// re-skinned for our reward currency.
+type EmojiEntry = [emoji: string, weight: number, canFlip?: boolean];
+const GEM_EMOJI_ENTRIES: EmojiEntry[] = [
+  ['💎', 10, true],
+  ['✨', 6, true],
+  ['🔷', 3, false],
+  ['🌟', 2, true],
+];
+const GEM_EMOJIS: EmojiOption[] = GEM_EMOJI_ENTRIES.flatMap(
+  ([emoji, weight, canFlip]) =>
+    Array.from({ length: weight }, () => ({
+      emoji,
+      canFlip: canFlip ?? false,
+    })),
+);
 
 export const AppHeader = () => {
   const { user, signIn, signOut } = useAuth();
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(anchorEl);
+
+  const balance = useGemsStore((s) => s.balance);
+  const addGems = useGemsStore((s) => s.addGems);
+
+  const { trigger } = useWebHaptics();
+  const triggerRef = useRef(trigger);
+  useEffect(() => {
+    triggerRef.current = trigger;
+  }, [trigger]);
+
+  const { create: createParticles } = useParticles();
+  const createParticlesRef = useRef(createParticles);
+  useEffect(() => {
+    createParticlesRef.current = createParticles;
+  }, [createParticles]);
+
+  const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
+  const reduceMotionRef = useRef(reduceMotion);
+  useEffect(() => {
+    reduceMotionRef.current = reduceMotion;
+  }, [reduceMotion]);
+
+  const chipRef = useRef<HTMLDivElement>(null);
+  const [animKey, setAnimKey] = useState(0);
+
+  // Drive sound + haptic + particles + chip self-animation from the store.
+  // Phase 3 earn rules will call addGems(n) too and inherit all of this for
+  // free. Using subscribe avoids React 19's set-state-in-effect warning.
+  useEffect(() => {
+    const unsub = useGemsStore.subscribe((state, prev) => {
+      if (state.addEventNonce === prev.addEventNonce) return;
+
+      // Sound
+      try {
+        playGemSound();
+      } catch {
+        // AudioContext blocked or unsupported — silent fallback.
+      }
+      // Haptic — buzz preset gives the dramatic long-vibration feel from the demo
+      try {
+        void triggerRef.current('buzz');
+      } catch {
+        // Vibration API unsupported — silent fallback.
+      }
+      if (reduceMotionRef.current) return;
+
+      // Chip self-animation
+      setAnimKey((k) => k + 1);
+
+      // Full-screen canvas particle burst, originating at the chip's center.
+      // Duration scales with amount so a +1 nudge feels different from a +50 reward.
+      const rect = chipRef.current?.getBoundingClientRect();
+      const cx = rect ? rect.left + rect.width / 2 : 32;
+      const cy = rect ? rect.top + rect.height / 2 : 32;
+      const duration = Math.min(
+        Math.max(state.lastAddedAmount * 100, 600),
+        1200,
+      );
+      createParticlesRef.current(cx, cy, GEM_EMOJIS, duration);
+    });
+    return unsub;
+  }, []);
+
+  const gemsActive = balance > 0;
+  const gemColor = gemsActive ? 'info.main' : 'text.disabled';
 
   const initials =
     (user?.firstName?.[0] ?? '') + (user?.lastName?.[0] ?? '') ||
@@ -51,7 +165,69 @@ export const AppHeader = () => {
       }}
     >
       <Toolbar variant="dense" sx={{ gap: 1 }}>
-        <Box sx={{ flexGrow: 1 }} />
+        <Stack
+          direction="row"
+          alignItems="center"
+          spacing={0.5}
+          sx={{ flexGrow: 1 }}
+        >
+          <Tooltip
+            title={
+              gemsActive
+                ? `${balance} gems`
+                : 'Earn gems by hitting daily targets and streaks (Phase 3)'
+            }
+          >
+            <Stack
+              ref={chipRef}
+              direction="row"
+              alignItems="center"
+              spacing={0.5}
+            >
+              <Box
+                sx={{
+                  display: 'inline-flex',
+                  lineHeight: 0,
+                }}
+              >
+                <Diamond
+                  key={animKey}
+                  sx={{
+                    color: gemColor,
+                    fontSize: 28,
+                    transition: 'color 300ms ease-out',
+                    animation:
+                      animKey > 0 ? `${shake} 600ms ease-out` : 'none',
+                  }}
+                />
+              </Box>
+              <Typography
+                key={`count-${animKey}`}
+                sx={{
+                  color: gemColor,
+                  fontWeight: 800,
+                  fontSize: 20,
+                  lineHeight: 1,
+                  transition: 'color 300ms ease-out',
+                  animation: animKey > 0 ? `${pop} 400ms ease-out` : 'none',
+                }}
+              >
+                {balance}
+              </Typography>
+            </Stack>
+          </Tooltip>
+          {import.meta.env.DEV && (
+            <Tooltip title="Add 5 gems (test only — DEV build)">
+              <IconButton
+                size="small"
+                onClick={() => addGems(5)}
+                sx={{ color: 'info.main' }}
+              >
+                <AddCircleOutline fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+        </Stack>
 
         <DarkModeToggle />
 

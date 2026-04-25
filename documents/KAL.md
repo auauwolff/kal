@@ -67,6 +67,7 @@ Distilled from research across Reddit (r/loseit, r/MacroFactor, r/Cronometer), A
 | PWA | `vite-plugin-pwa` (installable, offline shell) | `petrol-saver`, `surf-mates` |
 | Charts | ECharts via `echarts-for-react` | `petrol-saver`, `clocker-convex` |
 | Barcode | `html5-qrcode` (progressive-enhance to `BarcodeDetector` on Android Chrome 83+) | Research: best PWA-compatible scanner in 2026 |
+| Haptics | `web-haptics` (`useWebHaptics().trigger("success" \| "nudge" \| "error" \| "buzz")`) | Cross-browser vibration with iOS Safari fallbacks. Used for gem-earn juice (AppHeader) and any future "rewarding" interactions. |
 | AI logging (later) | Anthropic SDK via Convex action, Claude Sonnet 4.6 with prompt caching | See `claude-api` skill |
 
 ### Why PWA, not React Native
@@ -332,7 +333,7 @@ The logging loop is the whole game. Everything here is Phase 2 unless marked oth
 
 ### App chrome
 
-- **Top app bar:** dark-mode toggle and avatar menu (right, profile/settings/sign-out); gem balance chip joins on the right in Phase 3. The streak chip used to live here but was moved into the Diary day-header row (see below) — streaks are a logging concept, not an app-shell one. MUI `AppBar` with sticky positioning.
+- **Top app bar:** **gem balance chip** on the left (`Diamond` icon + count, sapphire `info.main` when active, dimmed `text.disabled` at 0; wired to `user.gem_balance` in Phase 3 — earn rules in §8); dark-mode toggle and avatar menu on the right (profile/settings/sign-out). The streak chip moved to the Diary day-header row — streaks count logging days, so they belong with the date. Gems take its place because they're an always-relevant balance, visible everywhere in the app. MUI `AppBar` with sticky positioning.
 - **Bottom nav (Phase 2):** three tabs — **Diary** · **Stats** · **Settings**. Add **Shop** in Phase 3, **Kal** in Phase 4. MUI `BottomNavigation`, clear active state.
 - **PWA shell:** installable, matching status-bar theme color, offline-safe diary page (last-logged data cached via Convex local cache + service worker).
 

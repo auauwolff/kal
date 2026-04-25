@@ -8,6 +8,7 @@ import '@fontsource/roboto/500.css';
 import '@fontsource/roboto/700.css';
 import { ConvexProviderWithAuthKit } from './ConvexProviderWithAuthKit';
 import { ErrorBoundary } from './ErrorBoundary';
+import { ParticlesProvider } from './components/ParticlesProvider';
 import { router } from './router';
 import './index.css';
 
@@ -21,7 +22,9 @@ createRoot(document.getElementById('root')!).render(
         redirectUri={import.meta.env.VITE_WORKOS_REDIRECT_URI}
       >
         <ConvexProviderWithAuthKit client={convex} useAuth={useAuth}>
-          <RouterProvider router={router} />
+          <ParticlesProvider>
+            <RouterProvider router={router} />
+          </ParticlesProvider>
         </ConvexProviderWithAuthKit>
       </AuthKitProvider>
     </ErrorBoundary>

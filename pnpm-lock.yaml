@@ -53,6 +53,9 @@ importers:
       react-hot-toast:
         specifier: ^2.6.0
         version: 2.6.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      web-haptics:
+        specifier: ^0.0.6
+        version: 0.0.6(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       zustand:
         specifier: ^5.0.12
         version: 5.0.12(@types/react@19.2.14)(react@19.2.5)(use-sync-external-store@1.6.0(react@19.2.5))
@@ -3089,6 +3092,23 @@ packages:
       tsx:
         optional: true
       yaml:
+        optional: true
+
+  web-haptics@0.0.6:
+    resolution: {integrity: sha512-eCzcf1LDi20+Fr0x9V3OkX92k0gxEQXaHajmhXHitsnk6SxPeshv8TBtBRqxyst8HI1uf2FyFVE7QS3jo1gkrw==}
+    peerDependencies:
+      react: '>=18'
+      react-dom: '>=18'
+      svelte: '>=4'
+      vue: '>=3'
+    peerDependenciesMeta:
+      react:
+        optional: true
+      react-dom:
+        optional: true
+      svelte:
+        optional: true
+      vue:
         optional: true
 
   webidl-conversions@4.0.2:
@@ -6391,6 +6411,11 @@ snapshots:
       lightningcss: 1.32.0
       terser: 5.46.2
       tsx: 4.21.0
+
+  web-haptics@0.0.6(react-dom@19.2.5(react@19.2.5))(react@19.2.5):
+    optionalDependencies:
+      react: 19.2.5
+      react-dom: 19.2.5(react@19.2.5)
 
   webidl-conversions@4.0.2: {}
 
