@@ -1,5 +1,5 @@
-// Synthesised gem-pickup chime — ascending C major arpeggio with a touch of
-// pitch jitter so back-to-back triggers don't sound mechanical. No audio asset.
+// Gem-earn sound: 4-note ascending C major arpeggio (Mario-coin vibe).
+// Synthesised via Web Audio — no audio asset, no harsh sawtooth harmonics.
 
 let ctx: AudioContext | null = null;
 
@@ -26,7 +26,7 @@ const playNote = (
   freq: number,
   when: number,
   dur = 0.18,
-  gainPeak = 0.15,
+  gainPeak = 0.14,
 ) => {
   const osc = audio.createOscillator();
   const gain = audio.createGain();
@@ -44,10 +44,11 @@ export const playGemSound = () => {
   const audio = getCtx();
   if (!audio) return;
   const t = audio.currentTime;
-  // C5 · E5 · G5 · C6 — Mario-coin vibe
+  // C5 · E5 · G5 · C6 — ascending C major
   const notes = [523.25, 659.25, 783.99, 1046.5];
   notes.forEach((f, i) => {
     const jitter = 0.99 + Math.random() * 0.02;
-    playNote(audio, f * jitter, t + i * 0.06, 0.18, i === notes.length - 1 ? 0.18 : 0.13);
+    const isLast = i === notes.length - 1;
+    playNote(audio, f * jitter, t + i * 0.07, isLast ? 0.22 : 0.16, isLast ? 0.16 : 0.12);
   });
 };

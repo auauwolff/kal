@@ -80,11 +80,11 @@ export const AppHeader = () => {
     triggerRef.current = trigger;
   }, [trigger]);
 
-  const { create: createParticles } = useParticles();
-  const createParticlesRef = useRef(createParticles);
+  const { createHoming } = useParticles();
+  const createHomingRef = useRef(createHoming);
   useEffect(() => {
-    createParticlesRef.current = createParticles;
-  }, [createParticles]);
+    createHomingRef.current = createHoming;
+  }, [createHoming]);
 
   const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
   const reduceMotionRef = useRef(reduceMotion);
@@ -119,16 +119,26 @@ export const AppHeader = () => {
       // Chip self-animation
       setAnimKey((k) => k + 1);
 
-      // Full-screen canvas particle burst, originating at the chip's center.
-      // Duration scales with amount so a +1 nudge feels different from a +50 reward.
+      // Center-pop → free scatter → fly to the counter, buzzing along the way.
+      // Particle count scales with amount so a +1 nudge feels different from
+      // a +50 reward.
       const rect = chipRef.current?.getBoundingClientRect();
-      const cx = rect ? rect.left + rect.width / 2 : 32;
-      const cy = rect ? rect.top + rect.height / 2 : 32;
-      const duration = Math.min(
-        Math.max(state.lastAddedAmount * 100, 600),
-        1200,
+      const targetX = rect ? rect.left + rect.width / 2 : 32;
+      const targetY = rect ? rect.top + rect.height / 2 : 32;
+      const originX = window.innerWidth / 2;
+      const originY = window.innerHeight / 2;
+      const amount = Math.min(
+        Math.max(state.lastAddedAmount * 3, 12),
+        30,
       );
-      createParticlesRef.current(cx, cy, GEM_EMOJIS, duration);
+      createHomingRef.current(
+        originX,
+        originY,
+        targetX,
+        targetY,
+        GEM_EMOJIS,
+        amount,
+      );
     });
     return unsub;
   }, []);

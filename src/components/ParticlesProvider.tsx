@@ -25,6 +25,17 @@ interface ParticlesContextValue {
     gx?: number,
     gy?: number,
   ) => void;
+  // Center-pop → gather → fly to a target. Used for the gem-earn animation:
+  // lots of gems pop at the origin, freely scatter, then home in on the target
+  // (the AppHeader counter), buzzing as they fly.
+  createHoming: (
+    originX: number,
+    originY: number,
+    targetX: number,
+    targetY: number,
+    emojis: EmojiOption[],
+    amount?: number,
+  ) => void;
 }
 
 interface Particle {
@@ -43,6 +54,9 @@ interface Particle {
   radius: number;
   gx: number;
   gy: number;
+  targetX?: number;
+  targetY?: number;
+  homingDelay?: number; // frames before homing force kicks in
 }
 
 const ParticlesContext = createContext<ParticlesContextValue | null>(null);
@@ -83,6 +97,10 @@ const getEmojiCanvas = (emoji: string): HTMLCanvasElement => {
   return offscreen;
 };
 
+const HOMING_FORCE = 0.9;
+const HOMING_MAX_SPEED = 26;
+const HOMING_BUZZ_JITTER = 1.6;
+
 const updateParticle = (p: Particle): boolean => {
   p.a += p.xv * 0.5;
   p.yv *= 0.9;
@@ -93,11 +111,38 @@ const updateParticle = (p: Particle): boolean => {
   p.xv += p.gx * 0.1;
   p.yv += (p.gy + p.yv) * 0.1;
 
+  // Homing: after the free-pop phase, accelerate toward target with a small
+  // jitter so the flight feels "buzzy" rather than rail-straight.
+  if (p.targetX !== undefined && p.targetY !== undefined) {
+    const elapsed = p.maxLife - p.life;
+    if (elapsed >= (p.homingDelay ?? 0)) {
+      const dx = p.targetX - p.x;
+      const dy = p.targetY - p.y;
+      const distSq = dx * dx + dy * dy;
+      if (distSq > 18 * 18) {
+        const dist = Math.sqrt(distSq);
+        p.xv += (dx / dist) * HOMING_FORCE;
+        p.yv += (dy / dist) * HOMING_FORCE;
+        const speed = Math.sqrt(p.xv * p.xv + p.yv * p.yv);
+        if (speed > HOMING_MAX_SPEED) {
+          p.xv = (p.xv / speed) * HOMING_MAX_SPEED;
+          p.yv = (p.yv / speed) * HOMING_MAX_SPEED;
+        }
+        p.x += (Math.random() - 0.5) * HOMING_BUZZ_JITTER;
+        p.y += (Math.random() - 0.5) * HOMING_BUZZ_JITTER;
+      } else {
+        // Reached the target — fade out fast and let it absorb into the chip.
+        p.opacity *= 0.7;
+        if (p.opacity < 0.05) p.life = 0;
+      }
+    }
+  }
+
   p.radius = p.fontSize * p.s * 0.5;
 
   p.life--;
   const lifeRatio = p.life / p.maxLife;
-  if (lifeRatio < 0.25) p.opacity = lifeRatio / 0.25;
+  if (lifeRatio < 0.25) p.opacity = Math.min(p.opacity, lifeRatio / 0.25);
 
   return p.life > 0 && p.opacity > 0.01;
 };
@@ -193,6 +238,51 @@ const spawnBurst = (
       radius: 0,
       gx,
       gy,
+    });
+  }
+};
+
+const spawnHomingBurst = (
+  particles: Particle[],
+  originX: number,
+  originY: number,
+  targetX: number,
+  targetY: number,
+  emojis: EmojiOption[],
+  amount: number,
+) => {
+  const cap = Math.min(amount, MAX_ACTIVE - particles.length);
+  if (cap <= 0) return;
+
+  for (let i = 0; i < cap; i++) {
+    // Outward velocity in a random direction so they "pop" before homing
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 4 + Math.random() * 7;
+    const xv = Math.cos(angle) * speed;
+    const yv = Math.sin(angle) * speed;
+
+    const pick = emojis[Math.floor(Math.random() * emojis.length)];
+
+    particles.push({
+      x: originX + (Math.random() - 0.5) * 30,
+      y: originY + (Math.random() - 0.5) * 30,
+      xv,
+      yv,
+      a: Math.random() * 360,
+      s: 0.2,
+      opacity: 1,
+      life: ANIM_FRAMES,
+      maxLife: ANIM_FRAMES,
+      emoji: pick?.emoji ?? '✨',
+      flipH: pick?.canFlip ? Math.random() < 0.5 : false,
+      fontSize: 28 + Math.ceil(Math.random() * 30),
+      radius: 0,
+      // No gravity — homing force takes over after the pop phase
+      gx: 0,
+      gy: 0,
+      targetX,
+      targetY,
+      homingDelay: 22 + Math.floor(Math.random() * 14), // ~0.4s of free pop
     });
   }
 };
@@ -308,8 +398,31 @@ export const ParticlesProvider = ({ children }: { children: ReactNode }) => {
     [startLoop],
   );
 
+  const createHoming = useCallback(
+    (
+      originX: number,
+      originY: number,
+      targetX: number,
+      targetY: number,
+      emojis: EmojiOption[],
+      amount = 16,
+    ) => {
+      spawnHomingBurst(
+        particlesRef.current,
+        originX,
+        originY,
+        targetX,
+        targetY,
+        emojis,
+        amount,
+      );
+      startLoop();
+    },
+    [startLoop],
+  );
+
   return (
-    <ParticlesContext.Provider value={{ create }}>
+    <ParticlesContext.Provider value={{ create, createHoming }}>
       {children}
       <canvas
         ref={canvasRef}
