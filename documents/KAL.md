@@ -11,7 +11,8 @@ This is the single canonical document for the Kal project. It supersedes `archiv
 - ✅ **Phase 0 — Scaffold** (2026-04-24): Vite + React 19 + MUI + Zustand + TanStack Router + Convex + WorkOS AuthKit + `vite-plugin-pwa` all wired. Installs to phone via `public/manifest.json`.
 - ✅ **Phase 2 — App shell** (2026-04-24): sticky AppHeader (Kal icon · title · dark-mode · avatar menu) + 3-tab BottomNav (Diary · Stats · Settings). Diary and Stats rendered with **mock data** in shapes matching §6.
 - ✅ **Phase 2 — Profile & targets** (2026-04-25): Settings page houses Body Stats, Weight Goal, and Daily Targets cards. Profile + targets persisted via Zustand `persist` (`kal-profile` in localStorage) with field names mirroring §6 so the future Convex `users` migration is mechanical. Diary energy gauge + macro rings consume the live targets via `selectDailyTargets`. Light mode is the default; dark-mode toggle lives only in the AppHeader.
-- ⏭️ **Next:** Convex schema + real queries — widen `convex/schema.ts` to cover `users` extensions, `meal_logs`, `exercise_logs`, `weights`, `favorites`, `meal_templates` via `@convex-dev/migrations`; the future `users.upsertProfile` mutation will accept exactly the persisted `kal-profile` shape. Then replace `src/lib/mockDiary.ts` + `src/lib/mockStats.ts` with Convex queries. After that: Phase 1 AUSNUT ETL → real food DB → real add-food flow.
+- ✅ **Phase 1 — AU food DB backbone** (2026-04-25): `foods` schema now includes `by_source_and_sourceId` for idempotent upserts. `convex/foods.ts` exposes admin-gated batch ingest / clear helpers plus source counts. `scripts/buildFoodsData.ts` now supports the actual local FSANZ files we downloaded: `AFCD Release 3 - Nutrient profiles.xlsx` and `AUSNUT 2023 - Food nutrient profiles.xlsx` (with legacy format fallback still kept in code). `scripts/seedFoods.ts` ingests in 500-row batches via `ConvexHttpClient`. Current loaded counts in Convex: `afcd=1588`, `ausnut=3280`, `branded_au=16`, `chain=10` (`total=4894`). Seed reruns are idempotent. USDA API key is stored only as env for future fallback use; USDA import is not active.
+- ⏭️ **Next:** Convex schema + real queries — widen `convex/schema.ts` to cover `users` extensions, `meal_logs`, `exercise_logs`, `weights`, `favorites`, `meal_templates` via `@convex-dev/migrations`; the future `users.upsertProfile` mutation will accept exactly the persisted `kal-profile` shape. Then replace `src/lib/mockDiary.ts` + `src/lib/mockStats.ts` with Convex queries, and wire the real add-food flow against the now-seeded `foods` table.
 
 ---
 
@@ -95,9 +96,9 @@ Distilled from research across Reddit (r/loseit, r/MacroFactor, r/Cronometer), A
 
 | Source | Role | Implementation |
 |---|---|---|
-| **AUSNUT 2023** (FSANZ) | Core AU reference: 3,741 foods, 58 nutrients each, 9,816 portion measures (~3.5 MB) | One-time ETL into Convex `foods` table. Download from `foodstandards.gov.au` / `data.gov.au`. CC-BY license — include attribution in app credits. |
-| **Australian Branded Food Database (AFCD)** | ~15,000 AU packaged products (~13.5 MB) | Same ETL. |
-| **USDA FoodData Central** (subset) | ~8,000 common international whole foods (~7 MB) | Same ETL, filtered. |
+| **AUSNUT 2023** (FSANZ) | Core AU reference | ✅ Imported from `AUSNUT 2023 - Food nutrient profiles.xlsx` into Convex `foods` as `source: "ausnut"` (currently 3,280 rows after AFCD name-dedupe). No household measures loaded yet, so current ETL falls back to `defaultServingG=100` and `commonPortions=[]`. |
+| **Australian Food Composition Database (AFCD) Release 3** | AU whole-food reference | ✅ Imported from `AFCD Release 3 - Nutrient profiles.xlsx` into Convex `foods` as `source: "afcd"` (currently 1,588 rows). |
+| **USDA FoodData Central** | Backup/fallback for international or missing foods | Not imported. API key is stored in local env only as a future fallback option; enable only if AU hit-rate proves insufficient. |
 | **Open Food Facts** | Live barcode lookup fallback, 3M products globally | Convex HTTP action, on-demand. Free, unlimited. AU coverage patchy but acceptable as supplement. |
 | **Hand-curated AU chains** | GYG, Zambrero, Grill'd, Nando's, Mad Mex, Hungry Jack's, McDonald's, KFC, Subway, Domino's, Crust, Sumo Salad, Boost, Oporto, Red Rooster, Schnitz, Roll'd | Weekend job. Covers ~80% of eating-out logs. AU law requires nutrition disclosure, so data is legally available from each chain. |
 | **User-contributed foods** | Crowdsource missing items | Gem reward. Phase 3+. |
@@ -421,9 +422,12 @@ Each phase has a concrete **Done when** gate. No phase graduates without it.
 ### Phase 1 — Food database backbone (weekend)
 
 - `foods` schema + indexes.
-- ETL scripts (Node CLI, one-off): AUSNUT 2023 → Convex, AFCD → Convex, USDA subset → Convex.
-- Open Food Facts HTTP action for barcode lookups, with write-through cache into `foods`.
-- Admin/dev query to spot-check entries.
+- ✅ `foods` schema + indexes shipped, including `by_source_and_sourceId` for idempotent ETL upserts.
+- ✅ ETL scripts shipped: `scripts/buildFoodsData.ts` builds `scripts/foodsData.json`; `scripts/seedFoods.ts` batch-upserts to Convex.
+- ✅ AU data loaded into Convex from AFCD Release 3 + AUSNUT 2023.
+- ⏳ Open Food Facts HTTP action for barcode lookups, with write-through cache into `foods`.
+- ⏳ Admin/dev spot-check UI / query for search relevance.
+- ❄️ USDA fallback intentionally deferred; keep as backup plan only.
 
 **Done when:** search for `tim tam`, `barramundi`, `weet bix`, `vegemite` returns accurate AU data; barcode scan of a random pantry item resolves (local hit first, OFF fallback second).
 
@@ -594,8 +598,9 @@ Phase 0 scaffold and the Phase 2 app-shell UI (Diary + Stats + Settings skeleton
 
 1. **Wire the Convex schema** for `users` extensions, `meal_logs`, `exercise_logs`, `weights`, `favorites`, `meal_templates`. Use `@convex-dev/migrations` (widen → migrate → narrow) per the `convex-migration-helper` skill. Include a `users.upsertProfile` mutation that accepts the persisted `kal-profile` shape (1:1 with §6 field names) and a hydration step that drains localStorage on first authenticated load.
 2. **Replace mock data with Convex queries.** Swap `src/lib/mockDiary.ts` → `api.meal_logs.getByDate` + `api.exercise_logs.getByDate`; swap `src/lib/mockStats.ts` → weight/calorie/macro/streak/exercise queries. Swap `useUserStore` → `api.users.get` so targets propagate from Convex too. UI already matches §6 shapes, so this is mostly a rename.
-3. **Phase 1 food DB.** Download AUSNUT 2023 + AFCD from `data.gov.au`, write the ETL into `foods`, add the Open Food Facts barcode HTTP action. Admin spot-check query.
-4. **Phase 2 fill-in.** Onboarding wizard (wraps the 3 Settings cards into a first-run flow), real food-search + add-food flow, barcode scanner wiring, weight quick-log + `weights` table, weekly-adjustment Convex cron, CSV export.
-5. **Dogfood for 14 consecutive days** without switching back to Cronometer — the Phase 2 done-when gate.
+3. **Finish Phase 1 integration.** The AU food DB is already loaded into Convex; now wire the real add-food flow to `api.foods.searchFoods`, add an admin spot-check view/query, and verify search ranking for AU staples + chains.
+4. **Add barcode fallback.** Implement the Open Food Facts HTTP action and client barcode flow (local `foods.barcode` first, OFF second, cache as `openfoodfacts_cache`). Keep USDA as env-only backup, not active product scope.
+5. **Phase 2 fill-in.** Onboarding wizard (wraps the 3 Settings cards into a first-run flow), weight quick-log + `weights` table, weekly-adjustment Convex cron, CSV export.
+6. **Dogfood for 14 consecutive days** without switching back to Cronometer — the Phase 2 done-when gate.
 
 Pet and social come later. Logging is the whole game until it feels better than Cronometer.

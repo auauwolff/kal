@@ -12,6 +12,14 @@ dist
 dist-ssr
 *.local
 
+# Local env
+.env.local
+
+# Raw FSANZ datasets — operator downloads locally, not redistributed
+data/*
+!data/README.md
+scripts/foodsData.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

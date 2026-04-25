@@ -35,5 +35,6 @@ export default defineSchema({
     searchText: v.string(),
   })
     .index('by_barcode', ['barcode'])
+    .index('by_source_and_sourceId', ['source', 'sourceId'])
     .searchIndex('search_text', { searchField: 'searchText' }),
 });
