@@ -1,5 +1,6 @@
-// Gem-earn sound: 4-note ascending C major arpeggio (Mario-coin vibe).
-// Synthesised via Web Audio — no audio asset, no harsh sawtooth harmonics.
+// Gem-earn sound: level-up jingle — quick ascending arpeggio (C5→E6) that
+// resolves into a held C major triad. Synthesised via Web Audio, all sine
+// waves so it stays bright without harsh harmonics.
 
 let ctx: AudioContext | null = null;
 
@@ -25,15 +26,16 @@ const playNote = (
   audio: AudioContext,
   freq: number,
   when: number,
-  dur = 0.18,
-  gainPeak = 0.14,
+  dur: number,
+  gainPeak: number,
+  attack = 0.006,
 ) => {
   const osc = audio.createOscillator();
   const gain = audio.createGain();
   osc.type = 'sine';
   osc.frequency.value = freq;
   gain.gain.value = 0;
-  gain.gain.linearRampToValueAtTime(gainPeak, when + 0.006);
+  gain.gain.linearRampToValueAtTime(gainPeak, when + attack);
   gain.gain.exponentialRampToValueAtTime(0.001, when + dur);
   osc.connect(gain).connect(audio.destination);
   osc.start(when);
@@ -44,11 +46,19 @@ export const playGemSound = () => {
   const audio = getCtx();
   if (!audio) return;
   const t = audio.currentTime;
-  // C5 · E5 · G5 · C6 — ascending C major
-  const notes = [523.25, 659.25, 783.99, 1046.5];
-  notes.forEach((f, i) => {
-    const jitter = 0.99 + Math.random() * 0.02;
-    const isLast = i === notes.length - 1;
-    playNote(audio, f * jitter, t + i * 0.07, isLast ? 0.22 : 0.16, isLast ? 0.16 : 0.12);
+
+  // Ascending run: C5 → E5 → G5 → C6 → E6 (60ms between hits)
+  const run = [523.25, 659.25, 783.99, 1046.5, 1318.51];
+  run.forEach((f, i) => {
+    const jitter = 0.995 + Math.random() * 0.01;
+    playNote(audio, f * jitter, t + i * 0.06, 0.14, 0.1);
+  });
+
+  // Held C major triad at the resolution — slight swell-in for triumph
+  const chordStart = t + 0.3;
+  const chordDur = 0.85;
+  [1046.5, 1318.51, 1567.98].forEach((f) => {
+    const jitter = 0.995 + Math.random() * 0.01;
+    playNote(audio, f * jitter, chordStart, chordDur, 0.07, 0.04);
   });
 };
