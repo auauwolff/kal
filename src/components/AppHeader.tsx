@@ -2,35 +2,25 @@ import { useState } from 'react';
 import {
   AppBar,
   Avatar,
+  Box,
   Button,
   Divider,
   IconButton,
   ListItemIcon,
   Menu,
   MenuItem,
-  Stack,
   Toolbar,
-  Typography,
 } from '@mui/material';
-import {
-  LocalFireDepartment,
-  Logout,
-  Settings as SettingsIcon,
-} from '@mui/icons-material';
+import { Logout, Settings as SettingsIcon } from '@mui/icons-material';
 import { useAuth } from '@workos-inc/authkit-react';
 import { useNavigate } from '@tanstack/react-router';
 import { DarkModeToggle } from '@/components/DarkModeToggle';
-
-// Wired to user.current_streak in Phase 3 (see documents/KAL.md §6).
-const MOCK_STREAK = 0;
 
 export const AppHeader = () => {
   const { user, signIn, signOut } = useAuth();
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(anchorEl);
-
-  const streakActive = MOCK_STREAK > 0;
 
   const initials =
     (user?.firstName?.[0] ?? '') + (user?.lastName?.[0] ?? '') ||
@@ -61,29 +51,7 @@ export const AppHeader = () => {
       }}
     >
       <Toolbar variant="dense" sx={{ gap: 1 }}>
-        <Stack
-          direction="row"
-          alignItems="center"
-          spacing={0.5}
-          sx={{ flexGrow: 1 }}
-        >
-          <LocalFireDepartment
-            sx={{
-              color: streakActive ? 'primary.main' : 'text.disabled',
-              fontSize: 28,
-            }}
-          />
-          <Typography
-            sx={{
-              color: streakActive ? 'primary.main' : 'text.disabled',
-              fontWeight: 800,
-              fontSize: 20,
-              lineHeight: 1,
-            }}
-          >
-            {MOCK_STREAK}
-          </Typography>
-        </Stack>
+        <Box sx={{ flexGrow: 1 }} />
 
         <DarkModeToggle />
 

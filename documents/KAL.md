@@ -4,7 +4,7 @@
 
 This is the single canonical document for the Kal project. It supersedes `archive/KAL_SPECS.md` and `archive/IMPLEMENTATION.md`. Everything — goals, stack, schema, roadmap, open questions — lives here. When a decision changes, update this file.
 
-*Last updated: 2026-04-24 — Owner: Felipe (fewo@dhigroup.com)*
+*Last updated: 2026-04-25 — Owner: Felipe (fewo@dhigroup.com)*
 
 ## Current status
 
@@ -332,17 +332,17 @@ The logging loop is the whole game. Everything here is Phase 2 unless marked oth
 
 ### App chrome
 
-- **Top app bar:** user avatar (left, opens a profile/settings menu), screen title in the middle, gem balance chip on the right (hidden in Phase 2, appears in Phase 3). MUI `AppBar` with sticky positioning.
+- **Top app bar:** dark-mode toggle and avatar menu (right, profile/settings/sign-out); gem balance chip joins on the right in Phase 3. The streak chip used to live here but was moved into the Diary day-header row (see below) — streaks are a logging concept, not an app-shell one. MUI `AppBar` with sticky positioning.
 - **Bottom nav (Phase 2):** three tabs — **Diary** · **Stats** · **Settings**. Add **Shop** in Phase 3, **Kal** in Phase 4. MUI `BottomNavigation`, clear active state.
 - **PWA shell:** installable, matching status-bar theme color, offline-safe diary page (last-logged data cached via Convex local cache + service worker).
 
 ### Diary page (top to bottom)
 
-1. **Day header row** — `‹ prev` · day label (Today / Yesterday / weekday + date) · `next ›` (disabled for future dates). Tap the label to jump back to today. Keeps the user anchored when scrolling back to copy-from-day.
-2. **Streak chip** — current streak · grace days remaining (Phase 3+). Present as a quiet chip in Phase 2 so the hook is visible from day one.
+1. **Day header row** — three slots, left to right: **streak chip** (`LocalFireDepartment` + count, dimmed at 0) · **date nav** (`‹ prev` · day label (Today / Yesterday / weekday + date) · `next ›`, future disabled; tap label to jump back to today) · **day-actions kebab** (`MoreVert` → Copy from yesterday, exports, etc.). Anchoring the streak to the date row makes the calendar relationship obvious — streaks count logged *days*.
+2. **Streak chip** — lives in the left slot of #1. Wired to `user.current_streak` in Phase 3; rendered dimmed at 0 in Phase 2 so the affordance is visible from day one. Grace days append later (Phase 3+).
 3. **Energy summary** — ECharts radial gauge for consumed vs daily calorie target (colour-graded: green inside ±10%, amber outside, red beyond 20%). Under it, a thin stacked-bar showing protein / carbs / fat vs targets. Compact — must fit above the fold on a phone.
 4. **Macro progress rings** — P / C / F / Cal, Duolingo-style. Taps open a breakdown sheet with per-meal contributions.
-5. **Meal sections: Breakfast · Lunch · Dinner · Snack** — each a card with summed calories + macro chips, expandable entry list, `+` to add food. Tap any entry to edit quantity or delete.
+5. **Meal sections: Breakfast · Lunch · Dinner · Snack** — each a card with summed calories + macro chips, expandable entry list, `+` to add food. Each entry has a vertical kebab (`MoreVert`) menu: **Move to {Breakfast / Lunch / Dinner / Snack}** (the entry's current group is omitted — handy for mistakes like "I logged that as breakfast but it was a snack"), **Edit quantity** (Phase 2), and **Delete**. Drag-and-drop was considered and rejected: touch DnD fights vertical scroll, meal cards are far apart, and moving entries is a rare *correction* — discoverability beats raw speed here.
 6. **Exercise section** — separate card below meals (see below). Visually distinct so it never gets confused with food logging.
 7. **Day actions row** (sticky or bottom of diary) — **Copy Yesterday** · **Quick-Add** · **Templates** · **Recent**. Exposes the fast-log features as big, thumb-reachable buttons.
 

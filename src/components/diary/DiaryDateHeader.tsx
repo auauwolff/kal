@@ -10,12 +10,14 @@ import {
   MenuItem,
   Stack,
   Tooltip,
+  Typography,
 } from '@mui/material';
 import {
   ChevronLeft,
   ChevronRight,
   ContentCopy,
   Description,
+  LocalFireDepartment,
   MoreVert,
   PictureAsPdf,
   TableChart,
@@ -23,10 +25,15 @@ import {
 import toast from 'react-hot-toast';
 import { formatDayLabel, getTodayISO, useDiaryStore } from '@/stores/diaryStore';
 
+// Wired to user.current_streak in Phase 3 (see documents/KAL.md §6).
+const MOCK_STREAK = 0;
+
 export const DiaryDateHeader = () => {
   const { selectedDate, goPrevDay, goNextDay, goToday } = useDiaryStore();
   const isToday = selectedDate === getTodayISO();
   const isFuture = selectedDate > getTodayISO();
+  const streakActive = MOCK_STREAK > 0;
+  const streakColor = streakActive ? 'primary.main' : 'text.disabled';
 
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(menuAnchor);
@@ -40,6 +47,20 @@ export const DiaryDateHeader = () => {
 
   return (
     <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <Tooltip title={streakActive ? `${MOCK_STREAK}-day streak` : 'No streak yet'}>
+        <Stack
+          direction="row"
+          spacing={0.5}
+          sx={{ position: 'absolute', left: 0, alignItems: 'center', px: 1 }}
+        >
+          <LocalFireDepartment sx={{ color: streakColor, fontSize: 22 }} />
+          <Typography
+            sx={{ color: streakColor, fontWeight: 700, fontSize: 16, lineHeight: 1 }}
+          >
+            {MOCK_STREAK}
+          </Typography>
+        </Stack>
+      </Tooltip>
       <Stack direction="row" sx={{ alignItems: 'center' }}>
         <IconButton onClick={goPrevDay} size="small">
           <ChevronLeft />
