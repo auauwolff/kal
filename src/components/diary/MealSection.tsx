@@ -27,6 +27,7 @@ import toast from 'react-hot-toast';
 import type { MealLog, MealType } from './types';
 import { MEAL_LABELS, MEAL_TYPES } from './types';
 import { useDiary } from './useDiary';
+import { AddFoodDialog } from './AddFoodDialog';
 
 interface MealSectionProps {
   mealType: MealType;
@@ -112,7 +113,8 @@ const EntryRow = ({ entry, onMove, onDelete }: EntryRowProps) => {
 
 export const MealSection = ({ mealType }: MealSectionProps) => {
   const theme = useTheme();
-  const { meals, addEntry, moveEntry, deleteEntry } = useDiary();
+  const { meals, moveEntry, deleteEntry } = useDiary();
+  const [dialogOpen, setDialogOpen] = useState(false);
   const entries = meals[mealType];
   const totals = entries.reduce(
     (acc, e) => ({
@@ -124,9 +126,7 @@ export const MealSection = ({ mealType }: MealSectionProps) => {
     { calories: 0, proteinG: 0, carbsG: 0, fatG: 0 },
   );
 
-  const handleAdd = () => {
-    addEntry(mealType);
-  };
+  const handleAdd = () => setDialogOpen(true);
 
   return (
     <Card variant="outlined">
@@ -190,6 +190,11 @@ export const MealSection = ({ mealType }: MealSectionProps) => {
           )}
         </Stack>
       </CardContent>
+      <AddFoodDialog
+        open={dialogOpen}
+        mealType={mealType}
+        onClose={() => setDialogOpen(false)}
+      />
     </Card>
   );
 };

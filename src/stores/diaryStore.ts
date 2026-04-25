@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { getMockDiary, pickPlaceholderFood } from '@/lib/mockDiary';
+import { getMockDiary } from '@/lib/mockDiary';
 import type { DayDiary, MealLog, MealType } from '@/components/diary/types';
 import { MEAL_TYPES } from '@/components/diary/types';
 import { useGemsStore } from '@/stores/gemsStore';
@@ -63,6 +63,21 @@ const findAndRemove = (
   return { meals: next };
 };
 
+export interface AddEntryArgs {
+  mealType: MealType;
+  foodId: string;
+  foodName: string;
+  brand?: string;
+  quantityG: number;
+  servingLabel?: string;
+  nutrientsPer100g: {
+    calories: number;
+    proteinG: number;
+    carbsG: number;
+    fatG: number;
+  };
+}
+
 interface DiaryStore {
   selectedDate: string;
   days: Record<string, DayDiary>;
@@ -70,7 +85,8 @@ interface DiaryStore {
   goPrevDay: () => void;
   goNextDay: () => void;
   goToday: () => void;
-  addEntry: (mealType: MealType) => void;
+  addEntry: (args: AddEntryArgs) => void;
+  relogEntry: (mealType: MealType, source: MealLog) => void;
   moveEntry: (entryId: string, to: MealType) => void;
   deleteEntry: (entryId: string) => void;
 }
@@ -97,25 +113,49 @@ export const useDiaryStore = create<DiaryStore>()((set, get) => ({
       const iso = toISO(new Date());
       return { selectedDate: iso, days: seedDay(s.days, iso) };
     }),
-  addEntry: (mealType) => {
+  addEntry: (args) => {
     const iso = get().selectedDate;
-    const food = pickPlaceholderFood();
+    const now = Date.now();
+    const scale = args.quantityG / 100;
+    const n = args.nutrientsPer100g;
+    const newEntry: MealLog = {
+      id: `${iso}-${args.mealType}-${args.foodId}-${now}`,
+      userId: 'mock-user',
+      date: iso,
+      mealType: args.mealType,
+      loggedAt: now,
+      foodId: args.foodId,
+      foodName: args.foodName,
+      brand: args.brand,
+      quantityG: args.quantityG,
+      servingLabel: args.servingLabel,
+      calories: Math.round(n.calories * scale),
+      proteinG: Math.round(n.proteinG * scale * 10) / 10,
+      carbsG: Math.round(n.carbsG * scale * 10) / 10,
+      fatG: Math.round(n.fatG * scale * 10) / 10,
+    };
+    set((s) => {
+      const day = s.days[iso];
+      if (!day) return s;
+      const meals = {
+        ...day.meals,
+        [args.mealType]: [...day.meals[args.mealType], newEntry],
+      };
+      return {
+        days: { ...s.days, [iso]: recomputeTotals({ ...day, meals }) },
+      };
+    });
+    useGemsStore.getState().addGems(GEMS_PER_LOG);
+  },
+  relogEntry: (mealType, source) => {
+    const iso = get().selectedDate;
     const now = Date.now();
     const newEntry: MealLog = {
-      id: `${iso}-${mealType}-${food.foodId}-${now}`,
-      userId: 'mock-user',
+      ...source,
+      id: `${iso}-${mealType}-${source.foodId}-${now}`,
       date: iso,
       mealType,
       loggedAt: now,
-      foodId: food.foodId,
-      foodName: food.foodName,
-      brand: food.brand,
-      quantityG: food.quantityG,
-      servingLabel: food.servingLabel,
-      calories: food.calories,
-      proteinG: food.proteinG,
-      carbsG: food.carbsG,
-      fatG: food.fatG,
     };
     set((s) => {
       const day = s.days[iso];
@@ -155,6 +195,17 @@ export const useDiaryStore = create<DiaryStore>()((set, get) => ({
       };
     }),
 }));
+
+export const selectRecentFoods = (state: DiaryStore): MealLog[] => {
+  const all = Object.values(state.days).flatMap((d) =>
+    Object.values(d.meals).flat(),
+  );
+  const byFoodId = new Map<string, MealLog>();
+  for (const entry of [...all].sort((a, b) => b.loggedAt - a.loggedAt)) {
+    if (!byFoodId.has(entry.foodId)) byFoodId.set(entry.foodId, entry);
+  }
+  return Array.from(byFoodId.values()).slice(0, 10);
+};
 
 export const getTodayISO = () => toISO(new Date());
 
