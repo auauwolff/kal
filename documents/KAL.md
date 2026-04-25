@@ -10,10 +10,11 @@ This is the single canonical document for the Kal project. It supersedes `archiv
 
 - ✅ **Phase 0 — Scaffold** (2026-04-24): Vite + React 19 + MUI + Zustand + TanStack Router + Convex + WorkOS AuthKit + `vite-plugin-pwa` all wired. Installs to phone via `public/manifest.json`.
 - ✅ **Phase 2 — App shell** (2026-04-24): sticky AppHeader (Kal icon · title · dark-mode · avatar menu) + 3-tab BottomNav (Diary · Stats · Settings). Diary and Stats rendered with **mock data** in shapes matching §6.
-- ✅ **Phase 2 — Profile & targets** (2026-04-25): Settings page houses Body Stats, Weight Goal, and Daily Targets cards. Profile + targets persisted via Zustand `persist` (`kal-profile` in localStorage) with field names mirroring §6 so the future Convex `users` migration is mechanical. Diary energy gauge + macro rings consume the live targets via `selectDailyTargets`. Light mode is the default; dark-mode toggle lives only in the AppHeader.
+- ✅ **Phase 2 — Profile & targets** (2026-04-25): Settings page houses Body Stats, Weight Goal, and Daily Targets cards. Profile + targets persist via Zustand `persist` (`kal-profile` in localStorage) and now sync to Convex `users` through `ProfileSync` / `users.upsertProfile` once both body stats and goal are complete. Diary energy gauge + macro rings consume the live targets via `selectDailyTargets` (hydrated from Convex on fresh signed-in sessions). Light mode is the default; dark-mode toggle lives only in the AppHeader.
 - ✅ **Phase 1 — AU food DB backbone** (2026-04-25): `foods` schema now includes `by_source_and_sourceId` for idempotent upserts. `convex/foods.ts` exposes admin-gated batch ingest / clear helpers plus source counts. `scripts/buildFoodsData.ts` now supports the actual local FSANZ files we downloaded: `AFCD Release 3 - Nutrient profiles.xlsx` and `AUSNUT 2023 - Food nutrient profiles.xlsx` (with legacy format fallback still kept in code). `scripts/seedFoods.ts` ingests in 500-row batches via `ConvexHttpClient`. Current loaded counts in Convex: `afcd=1588`, `ausnut=3280`, `branded_au=16`, `chain=10` (`total=4894`). Seed reruns are idempotent. USDA API key is stored only as env for future fallback use; USDA import is not active.
 - ✅ **Food search polish** (2026-04-25): `api.foods.searchFoods` now does normalized + scored ranking on top of the Convex search index, so exact / prefix / AU-relevant matches rank first. `AddFoodDialog` now shows source chips (`AFCD`, `AUSNUT`, `Brand`, `Chain`, etc.). Manual sanity checks in-app looked good for AU staples and chain aliases.
-- ⏭️ **Next:** Make the diary real in Convex — add `meal_logs` (and supporting queries/mutations), replace the local/mock add / delete / move / relog flow with Convex, derive recent foods from real meal logs, then widen the rest of `convex/schema.ts` for `users`, `exercise_logs`, `weights`, `favorites`, and `meal_templates` via `@convex-dev/migrations`.
+- ✅ **Convex diary backbone + portion picker** (2026-04-25): `users`, `meal_logs`, `exercise_logs`, `weights`, `favorites`, and `meal_templates` are now in `convex/schema.ts`; `convex/lib/auth.ts` provides `getAuthUserOrNull`, `requireAuth`, and `ensureAuthUser`; `convex/meal_logs.ts` exposes real by-date, recent, add, relog, move, delete, and copy-day mutations. Diary add / delete / move / recent-food / Copy Yesterday flows now use Convex instead of local mock state while keeping the Phase 2 `+5` gem celebration placeholder. The abandoned freeform quick-add panel was removed; selecting a searched food now opens a simpler portion picker with friendly chips like 1 slice, 2 slices, half pizza, whole pizza, small/regular/large cake slice, plus grams. `ProfileSync` now pushes completed Settings profiles to `users.upsertProfile` and hydrates local state from `api.users.get` on fresh signed-in sessions.
+- ⏭️ **Next:** Wire real exercise add/edit, weight logs + Stats queries, copy-from-any-day, barcode fallback via Open Food Facts, weekly-adjustment cron, and CSV export.
 
 ---
 
@@ -352,7 +353,7 @@ The logging loop is the whole game. Everything here is Phase 2 unless marked oth
 4. **Macro progress rings** — P / C / F / Cal, Duolingo-style. Taps open a breakdown sheet with per-meal contributions.
 5. **Meal sections: Breakfast · Lunch · Dinner · Snack** — each a card with summed calories + macro chips, expandable entry list, `+` to add food. **Phase 2 stub**: tapping `+` adds a random `PLACEHOLDER_FOODS` entry (`src/lib/mockDiary.ts`) and earns `+5` gems with the full celebration — replaced by the real food-search flow when it lands. Each entry has a vertical kebab (`MoreVert`) menu: **Move to {Breakfast / Lunch / Dinner / Snack}** (the entry's current group is omitted — handy for mistakes like "I logged that as breakfast but it was a snack"), **Edit quantity** (Phase 2), and **Delete**. Drag-and-drop was considered and rejected: touch DnD fights vertical scroll, meal cards are far apart, and moving entries is a rare *correction* — discoverability beats raw speed here.
 6. **Exercise section** — separate card below meals (see below). Visually distinct so it never gets confused with food logging.
-7. **Day actions row** (sticky or bottom of diary) — **Copy Yesterday** · **Quick-Add** · **Templates** · **Recent**. Exposes the fast-log features as big, thumb-reachable buttons.
+7. **Day actions row** (sticky or bottom of diary) — **Copy Yesterday** · **Templates** · **Recent** · **Custom Food**. Exposes the fast-log features as big, thumb-reachable buttons.
 
 ### Exercise logging
 
@@ -392,7 +393,7 @@ There is no separate Auto-calc button — `setBodyStats` and `setGoal` already t
 2. **Copy Yesterday** button — people eat similar day-to-day; dramatic friction reduction.
 3. **Copy from any day** — secondary action inside the day header. Pick any previous day from a date picker, bulk-copy all its meal entries into the current day.
 4. **Meal templates** — "my usual breakfast" as a saved, re-loggable group.
-5. **Quick-Add calories** — escape hatch for social meals where exact logging is impossible.
+5. **Friendly portion picker** — ✅ selecting a searched food now offers non-gram portions where possible (e.g. pizza slices / half pizza / whole pizza, bread slices, cake slices, cooked rice cups) plus manual grams.
 6. **Barcode scan** — html5-qrcode → match local `foods.barcode` first, fall back to Open Food Facts HTTP action, cache the result into `foods` with `source: "openfoodfacts_cache"`.
 7. **Favorites** — starred foods surface first in search.
 8. **Fast search** — fuzzy match on `searchable_tokens`. Client-side debounce.
@@ -439,7 +440,7 @@ Each phase has a concrete **Done when** gate. No phase graduates without it.
 - **Onboarding wizard:** wraps the same 3 cards in a first-run multi-step flow for users without a profile yet. Not yet shipped — Settings is the entry point until then.
 - **Diary page** (full layout in §7): day-nav header, streak chip, ECharts energy gauge, macro rings, 4 meal sections (breakfast / lunch / dinner / snack), exercise section, day-actions row.
 - **Add food flow:** search → pick → quantity (g + common portions dropdown) → log.
-- **Fast-log:** Recent, Copy Yesterday, Copy-from-any-day, Favorites, Meal Templates, Quick-Add.
+- **Fast-log:** Recent, Copy Yesterday, Copy-from-any-day, Favorites, Meal Templates, friendly portion picker, and Custom Food for missing items.
 - **Barcode scan** via html5-qrcode, local-first then Open Food Facts fallback.
 - **Exercise log:** add-entry flow (type + duration + intensity); no calorie credit, ever.
 - **Weight tracking:** quick-log page + integration into the Stats Weight card.
@@ -597,11 +598,10 @@ interface AccessoryItem {
 
 Phase 0 scaffold and the Phase 2 app-shell UI (Diary + Stats + Settings skeletons, mock data) shipped on 2026-04-24. Profile + targets editing in Settings shipped on 2026-04-25 (Zustand-persisted; pending Convex migration).
 
-1. **Wire the Convex schema** for `users` extensions, `meal_logs`, `exercise_logs`, `weights`, `favorites`, `meal_templates`. Use `@convex-dev/migrations` (widen → migrate → narrow) per the `convex-migration-helper` skill. Include a `users.upsertProfile` mutation that accepts the persisted `kal-profile` shape (1:1 with §6 field names) and a hydration step that drains localStorage on first authenticated load.
-2. **Replace mock data with Convex queries.** Swap `src/lib/mockDiary.ts` → `api.meal_logs.getByDate` + `api.exercise_logs.getByDate`; swap `src/lib/mockStats.ts` → weight/calorie/macro/streak/exercise queries. Swap `useUserStore` → `api.users.get` so targets propagate from Convex too. UI already matches §6 shapes, so this is mostly a rename.
-3. **Make diary logging real.** Add `meal_logs` schema + indexes, Convex mutations (`add`, `delete`, `move`, `relog`), and a by-date query. Replace the local Zustand/mock diary writes + reads with Convex and derive recent foods from real logs.
-4. **Add barcode fallback.** Implement the Open Food Facts HTTP action and client barcode flow (local `foods.barcode` first, OFF second, cache as `openfoodfacts_cache`). Keep USDA as env-only backup, not active product scope.
-5. **Phase 2 fill-in.** Onboarding wizard (wraps the 3 Settings cards into a first-run flow), weight quick-log + `weights` table, weekly-adjustment Convex cron, CSV export.
-6. **Dogfood for 14 consecutive days** without switching back to Cronometer — the Phase 2 done-when gate.
+1. **Replace remaining mock data with Convex queries.** Diary meal entries now come from `api.meal_logs.getByDate`, and profile/targets sync through `api.users.get` / `users.upsertProfile`, but Stats still uses `src/lib/mockStats.ts` and exercise add is still a stub. Wire `weights`, `exercise_logs`, calorie/macro/streak/exercise queries, and point the Diary targets directly at Convex once the local/Convex profile handshake has been dogfooded.
+2. **Fast-log completion.** Add copy-from-any-day, Favorites, Meal Templates, a better custom-food flow for missing items, and real exercise add/edit/delete flows.
+3. **Barcode fallback.** Implement the Open Food Facts HTTP action and client barcode flow (local `foods.barcode` first, OFF second, cache as `openfoodfacts_cache`). Keep USDA as env-only backup, not active product scope.
+4. **Phase 2 fill-in.** Onboarding wizard (wraps the 3 Settings cards into a first-run flow), weight quick-log + `weights` table, weekly-adjustment Convex cron, CSV export.
+5. **Dogfood for 14 consecutive days** without switching back to Cronometer — the Phase 2 done-when gate.
 
 Pet and social come later. Logging is the whole game until it feels better than Cronometer.

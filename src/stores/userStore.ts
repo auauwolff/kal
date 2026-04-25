@@ -17,6 +17,7 @@ const DEFAULT_TARGETS: UserTargets = {
 };
 
 interface UserStore extends UserProfile {
+  hydrateProfile: (profile: UserProfile) => void;
   setBodyStats: (stats: BodyStats) => void;
   setGoal: (goal: WeightGoal) => void;
   setTarget: (key: keyof UserTargets, value: number) => void;
@@ -30,6 +31,8 @@ export const useUserStore = create<UserStore>()(
       bodyStats: null,
       goal: null,
       targets: DEFAULT_TARGETS,
+
+      hydrateProfile: (profile) => set(profile),
 
       setBodyStats: (bodyStats) => {
         set({ bodyStats });

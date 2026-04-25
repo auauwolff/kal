@@ -8,8 +8,13 @@
  * @module
  */
 
+import type * as exercise_logs from "../exercise_logs.js";
 import type * as foods from "../foods.js";
 import type * as foodsSeed from "../foodsSeed.js";
+import type * as lib_auth from "../lib/auth.js";
+import type * as meal_logs from "../meal_logs.js";
+import type * as users from "../users.js";
+import type * as validators from "../validators.js";
 
 import type {
   ApiFromModules,
@@ -18,8 +23,13 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  exercise_logs: typeof exercise_logs;
   foods: typeof foods;
   foodsSeed: typeof foodsSeed;
+  "lib/auth": typeof lib_auth;
+  meal_logs: typeof meal_logs;
+  users: typeof users;
+  validators: typeof validators;
 }>;
 
 /**

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AppBar,
   Box,
@@ -11,7 +11,6 @@ import {
   List,
   ListItem,
   ListItemButton,
-  MenuItem,
   Stack,
   TextField,
   Toolbar,
@@ -25,19 +24,24 @@ import {
   Close as CloseIcon,
   Search as SearchIcon,
 } from '@mui/icons-material';
-import { useShallow } from 'zustand/react/shallow';
 import { useQuery } from 'convex/react';
 import toast from 'react-hot-toast';
 import { api } from '../../../convex/_generated/api';
 import type { Doc } from '../../../convex/_generated/dataModel';
-import { selectRecentFoods, useDiaryStore } from '@/stores/diaryStore';
 import type { MealLog } from './types';
 import { MEAL_LABELS, type MealType } from './types';
+import { useDiary } from './useDiary';
 
 interface AddFoodDialogProps {
   open: boolean;
   mealType: MealType;
   onClose: () => void;
+}
+
+interface PortionOption {
+  label: string;
+  grams: number;
+  helper?: string;
 }
 
 const useDebounce = <T,>(value: T, delayMs: number): T => {
@@ -51,6 +55,9 @@ const useDebounce = <T,>(value: T, delayMs: number): T => {
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
 
+const errorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error ? error.message : fallback;
+
 const SOURCE_LABELS: Record<Doc<'foods'>['source'], string> = {
   afcd: 'AFCD',
   ausnut: 'AUSNUT',
@@ -61,14 +68,116 @@ const SOURCE_LABELS: Record<Doc<'foods'>['source'], string> = {
   openfoodfacts_cache: 'Barcode',
 };
 
+const normalize = (value: string) => value.toLowerCase();
+
+const basePortionOptions = (food: Doc<'foods'>): PortionOption[] => [
+  ...food.commonPortions.map((p) => ({ label: p.label, grams: p.grams })),
+  { label: `${food.defaultServingG} g`, grams: food.defaultServingG, helper: 'default' },
+  { label: '100 g', grams: 100, helper: 'weighed' },
+];
+
+const friendlyPortionOptions = (food: Doc<'foods'>): PortionOption[] => {
+  const name = normalize(`${food.brand ?? ''} ${food.name}`);
+  const options: PortionOption[] = [];
+
+  if (name.includes('pizza')) {
+    options.push(
+      { label: '1 slice', grams: 107, helper: '~285 kcal if pizza is 266 kcal/100g' },
+      { label: '2 slices', grams: 214 },
+      { label: '1/2 pizza', grams: 400 },
+      { label: 'Whole pizza', grams: 800 },
+    );
+  }
+
+  if (name.includes('bread') || name.includes('toast') || name.includes('sourdough')) {
+    options.push(
+      { label: '1 slice', grams: 35 },
+      { label: '2 slices', grams: 70 },
+    );
+  }
+
+  if (name.includes('cake') || name.includes('cheesecake') || name.includes('brownie')) {
+    options.push(
+      { label: 'Small slice', grams: 75 },
+      { label: '1 slice', grams: 100 },
+      { label: 'Large slice', grams: 150 },
+    );
+  }
+
+  if (name.includes('sandwich')) {
+    options.push(
+      { label: '1/2 sandwich', grams: 100 },
+      { label: '1 sandwich', grams: 200 },
+    );
+  }
+
+  if (name.includes('burger')) {
+    options.push({ label: '1 burger', grams: Math.max(food.defaultServingG, 220) });
+  }
+
+  if (name.includes('wrap') || name.includes('burrito')) {
+    options.push(
+      { label: '1/2 wrap', grams: 150 },
+      { label: '1 wrap', grams: 300 },
+    );
+  }
+
+  if (name.includes('banana')) {
+    options.push(
+      { label: 'Small banana', grams: 100 },
+      { label: 'Medium banana', grams: 118 },
+      { label: 'Large banana', grams: 136 },
+    );
+  }
+
+  if (name.includes('apple')) {
+    options.push(
+      { label: 'Small apple', grams: 150 },
+      { label: 'Medium apple', grams: 180 },
+      { label: 'Large apple', grams: 220 },
+    );
+  }
+
+  if (name.includes('rice')) {
+    options.push(
+      { label: '1/2 cup cooked', grams: 80 },
+      { label: '1 cup cooked', grams: 160 },
+      { label: '2 cups cooked', grams: 320 },
+    );
+  }
+
+  if (name.includes('pasta') || name.includes('spaghetti')) {
+    options.push(
+      { label: '1 cup cooked', grams: 140 },
+      { label: '2 cups cooked', grams: 280 },
+    );
+  }
+
+  return options;
+};
+
+const portionOptionsForFood = (food: Doc<'foods'>): PortionOption[] => {
+  const seen = new Set<string>();
+  const addUnique = (option: PortionOption, acc: PortionOption[]) => {
+    if (!Number.isFinite(option.grams) || option.grams <= 0) return;
+    const key = `${option.label.toLowerCase()}-${Math.round(option.grams)}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    acc.push({ ...option, grams: Math.round(option.grams) });
+  };
+
+  const options: PortionOption[] = [];
+  for (const option of friendlyPortionOptions(food)) addUnique(option, options);
+  for (const option of basePortionOptions(food)) addUnique(option, options);
+  return options.slice(0, 10);
+};
+
 export const AddFoodDialog = ({ open, mealType, onClose }: AddFoodDialogProps) => {
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 200);
   const [picked, setPicked] = useState<Doc<'foods'> | null>(null);
   const [quantityG, setQuantityG] = useState<number>(0);
-  const addEntry = useDiaryStore((s) => s.addEntry);
-  const relogEntry = useDiaryStore((s) => s.relogEntry);
-  const recentFoods = useDiaryStore(useShallow(selectRecentFoods));
+  const { addEntry, relogEntry, recentFoods } = useDiary();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -84,36 +193,44 @@ export const AddFoodDialog = ({ open, mealType, onClose }: AddFoodDialogProps) =
     trimmedSearch.length > 0 ? { query: trimmedSearch, limit: 25 } : 'skip',
   );
 
+  const portionOptions = useMemo(
+    () => (picked ? portionOptionsForFood(picked) : []),
+    [picked],
+  );
+
   const handlePick = (food: Doc<'foods'>) => {
     setPicked(food);
-    setQuantityG(food.defaultServingG);
+    const options = portionOptionsForFood(food);
+    setQuantityG(options[0]?.grams ?? food.defaultServingG);
   };
 
-  const handleQuickAdd = (entry: MealLog) => {
-    relogEntry(mealType, entry);
-    toast(`Added ${entry.foodName}`, { icon: '🍽️' });
-    onClose();
+  const handleRecentAdd = (entry: MealLog) => {
+    void relogEntry(mealType, entry)
+      .then(() => {
+        toast(`Added ${entry.foodName}`, { icon: '🍽️' });
+        onClose();
+      })
+      .catch((error: unknown) => {
+        toast.error(errorMessage(error, `Could not add ${entry.foodName}`));
+      });
   };
 
   const handleAdd = () => {
     if (!picked || quantityG <= 0) return;
-    const matchedPortion = picked.commonPortions.find((p) => p.grams === quantityG);
-    addEntry({
+    const matchedPortion = portionOptions.find((p) => p.grams === quantityG);
+    void addEntry({
       mealType,
       foodId: picked._id,
-      foodName: picked.name,
-      brand: picked.brand,
       quantityG,
       servingLabel: matchedPortion?.label,
-      nutrientsPer100g: {
-        calories: picked.nutrientsPer100g.calories,
-        proteinG: picked.nutrientsPer100g.proteinG,
-        carbsG: picked.nutrientsPer100g.carbsG,
-        fatG: picked.nutrientsPer100g.fatG,
-      },
-    });
-    toast(`Added ${picked.name}`, { icon: '🍽️' });
-    onClose();
+    })
+      .then(() => {
+        toast(`Added ${picked.name}`, { icon: '🍽️' });
+        onClose();
+      })
+      .catch((error: unknown) => {
+        toast.error(errorMessage(error, `Could not add ${picked.name}`));
+      });
   };
 
   const scale = quantityG / 100;
@@ -125,9 +242,6 @@ export const AddFoodDialog = ({ open, mealType, onClose }: AddFoodDialogProps) =
         fatG: round1(picked.nutrientsPer100g.fatG * scale),
       }
     : null;
-
-  const selectedPortionValue =
-    picked?.commonPortions.find((p) => p.grams === quantityG)?.grams ?? '';
 
   return (
     <Dialog
@@ -202,14 +316,14 @@ export const AddFoodDialog = ({ open, mealType, onClose }: AddFoodDialogProps) =
                   <List disablePadding>
                     {recentFoods.map((entry) => (
                       <ListItem
-                        key={entry.foodId}
+                        key={entry.id}
                         disablePadding
                         secondaryAction={
                           <IconButton
                             edge="end"
                             color="secondary"
                             aria-label={`Add ${entry.foodName} to ${MEAL_LABELS[mealType]}`}
-                            onClick={() => handleQuickAdd(entry)}
+                            onClick={() => handleRecentAdd(entry)}
                           >
                             <AddIcon />
                           </IconButton>
@@ -217,7 +331,7 @@ export const AddFoodDialog = ({ open, mealType, onClose }: AddFoodDialogProps) =
                       >
                         <ListItemButton
                           sx={{ pr: 7 }}
-                          onClick={() => handleQuickAdd(entry)}
+                          onClick={() => handleRecentAdd(entry)}
                         >
                           <Box sx={{ flexGrow: 1, minWidth: 0 }}>
                             <Typography
@@ -248,7 +362,7 @@ export const AddFoodDialog = ({ open, mealType, onClose }: AddFoodDialogProps) =
                   color="text.secondary"
                   sx={{ p: 2, textAlign: 'center' }}
                 >
-                  Type to search — try "Weet-Bix", "GYG", or "banana".
+                  Type to search — try "pizza", "bread", "cheesecake", or "Weet-Bix".
                 </Typography>
               )
             ) : results === undefined ? (
@@ -318,45 +432,40 @@ export const AddFoodDialog = ({ open, mealType, onClose }: AddFoodDialogProps) =
             )}
           </Stack>
 
-          <Stack direction="row" gap={2} alignItems="flex-start">
-            <TextField
-              label="Quantity"
-              type="number"
-              value={quantityG}
-              onChange={(e) => setQuantityG(Math.max(0, Number(e.target.value)))}
-              slotProps={{
-                input: {
-                  endAdornment: <InputAdornment position="end">g</InputAdornment>,
-                },
-                htmlInput: { min: 0, inputMode: 'decimal' },
-              }}
-              sx={{ flex: 1 }}
-            />
+          <Box>
+            <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1 }}>
+              Choose a portion
+            </Typography>
+            <Stack direction="row" flexWrap="wrap" gap={1}>
+              {portionOptions.map((portion) => {
+                const selected = portion.grams === quantityG;
+                return (
+                  <Chip
+                    key={`${portion.label}-${portion.grams}`}
+                    clickable
+                    color={selected ? 'secondary' : 'default'}
+                    variant={selected ? 'filled' : 'outlined'}
+                    label={portion.label}
+                    onClick={() => setQuantityG(portion.grams)}
+                    sx={{ fontWeight: selected ? 700 : 500 }}
+                  />
+                );
+              })}
+            </Stack>
+          </Box>
 
-            {picked.commonPortions.length > 0 && (
-              <TextField
-                select
-                label="Portion"
-                value={selectedPortionValue}
-                onChange={(e) => {
-                  const grams = Number(e.target.value);
-                  if (!Number.isNaN(grams) && grams > 0) setQuantityG(grams);
-                }}
-                sx={{ flex: 1 }}
-              >
-                {selectedPortionValue === '' && (
-                  <MenuItem value="" disabled>
-                    Choose…
-                  </MenuItem>
-                )}
-                {picked.commonPortions.map((p) => (
-                  <MenuItem key={p.label} value={p.grams}>
-                    {p.label}
-                  </MenuItem>
-                ))}
-              </TextField>
-            )}
-          </Stack>
+          <TextField
+            label="Or enter grams"
+            type="number"
+            value={quantityG}
+            onChange={(e) => setQuantityG(Math.max(0, Number(e.target.value)))}
+            slotProps={{
+              input: {
+                endAdornment: <InputAdornment position="end">g</InputAdornment>,
+              },
+              htmlInput: { min: 0, inputMode: 'decimal' },
+            }}
+          />
 
           {scaled && (
             <Box sx={{ bgcolor: 'action.hover', p: 2, borderRadius: 1 }}>

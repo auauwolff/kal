@@ -46,6 +46,9 @@ interface EntryRowProps {
   onDelete: () => void;
 }
 
+const errorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error ? error.message : fallback;
+
 const EntryRow = ({ entry, onMove, onDelete }: EntryRowProps) => {
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(menuAnchor);
@@ -167,12 +170,18 @@ export const MealSection = ({ mealType }: MealSectionProps) => {
               key={entry.id}
               entry={entry}
               onMove={(to) => {
-                moveEntry(entry.id, to);
-                toast(`Moved to ${MEAL_LABELS[to]}`, { icon: '🍽️' });
+                void moveEntry(entry.id, to)
+                  .then(() => toast(`Moved to ${MEAL_LABELS[to]}`, { icon: '🍽️' }))
+                  .catch((error: unknown) =>
+                    toast.error(errorMessage(error, 'Could not move meal')),
+                  );
               }}
               onDelete={() => {
-                deleteEntry(entry.id);
-                toast(`Deleted ${entry.foodName}`, { icon: '🗑️' });
+                void deleteEntry(entry.id)
+                  .then(() => toast(`Deleted ${entry.foodName}`, { icon: '🗑️' }))
+                  .catch((error: unknown) =>
+                    toast.error(errorMessage(error, `Could not delete ${entry.foodName}`)),
+                  );
               }}
             />
           ))}

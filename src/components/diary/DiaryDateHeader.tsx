@@ -22,16 +22,31 @@ import {
   PictureAsPdf,
   TableChart,
 } from '@mui/icons-material';
+import { useMutation } from 'convex/react';
 import toast from 'react-hot-toast';
+import { api } from '../../../convex/_generated/api';
 import { formatDayLabel, getTodayISO, useDiaryStore } from '@/stores/diaryStore';
 
 // Wired to user.current_streak in Phase 3 (see documents/KAL.md §6).
 const MOCK_STREAK = 0;
 
+const shiftDate = (iso: string, days: number) => {
+  const d = new Date(iso + 'T00:00:00');
+  d.setDate(d.getDate() + days);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const errorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error ? error.message : fallback;
+
 export const DiaryDateHeader = () => {
   const { selectedDate, goPrevDay, goNextDay, goToday } = useDiaryStore();
+  const copyDay = useMutation(api.meal_logs.copyDay);
   const isToday = selectedDate === getTodayISO();
-  const isFuture = selectedDate > getTodayISO();
+  const isTodayOrFuture = selectedDate >= getTodayISO();
   const streakActive = MOCK_STREAK > 0;
   const streakColor = streakActive ? 'primary.main' : 'text.disabled';
 
@@ -43,6 +58,24 @@ export const DiaryDateHeader = () => {
   const runAction = (message: string, icon: string) => {
     closeMenu();
     toast(message, { icon });
+  };
+
+  const handleCopyYesterday = () => {
+    closeMenu();
+    const fromDate = shiftDate(selectedDate, -1);
+    void copyDay({ fromDate, toDate: selectedDate })
+      .then(({ copied }) => {
+        const noun = copied === 1 ? 'item' : 'items';
+        toast(
+          copied > 0
+            ? `Copied ${copied} ${noun} from ${formatDayLabel(fromDate)}`
+            : `${formatDayLabel(fromDate)} has no meals to copy`,
+          { icon: '📋' },
+        );
+      })
+      .catch((error: unknown) => {
+        toast.error(errorMessage(error, 'Could not copy yesterday'));
+      });
   };
 
   return (
@@ -74,7 +107,7 @@ export const DiaryDateHeader = () => {
             {formatDayLabel(selectedDate)}
           </Button>
         </Tooltip>
-        <IconButton onClick={goNextDay} size="small" disabled={isFuture}>
+        <IconButton onClick={goNextDay} size="small" disabled={isTodayOrFuture}>
           <ChevronRight />
         </IconButton>
       </Stack>
@@ -96,11 +129,7 @@ export const DiaryDateHeader = () => {
         transformOrigin={{ horizontal: 'right', vertical: 'top' }}
         slotProps={{ paper: { sx: { minWidth: 220 } } }}
       >
-        <MenuItem
-          onClick={() =>
-            runAction('Copy previous day — wires up with meal_logs in Phase 2', '📋')
-          }
-        >
+        <MenuItem onClick={handleCopyYesterday}>
           <ListItemIcon>
             <ContentCopy fontSize="small" sx={{ color: 'secondary.main' }} />
           </ListItemIcon>
