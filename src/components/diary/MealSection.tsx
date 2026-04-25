@@ -112,7 +112,7 @@ const EntryRow = ({ entry, onMove, onDelete }: EntryRowProps) => {
 
 export const MealSection = ({ mealType }: MealSectionProps) => {
   const theme = useTheme();
-  const { meals, moveEntry, deleteEntry } = useDiary();
+  const { meals, addEntry, moveEntry, deleteEntry } = useDiary();
   const entries = meals[mealType];
   const totals = entries.reduce(
     (acc, e) => ({
@@ -125,9 +125,7 @@ export const MealSection = ({ mealType }: MealSectionProps) => {
   );
 
   const handleAdd = () => {
-    toast(`Add to ${MEAL_LABELS[mealType]} — coming in Phase 2 food search`, {
-      icon: '🍽️',
-    });
+    addEntry(mealType);
   };
 
   return (

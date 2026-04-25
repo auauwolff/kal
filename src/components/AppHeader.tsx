@@ -17,7 +17,6 @@ import {
 } from '@mui/material';
 import { keyframes } from '@emotion/react';
 import {
-  AddCircleOutline,
   Diamond,
   Logout,
   Settings as SettingsIcon,
@@ -72,7 +71,6 @@ export const AppHeader = () => {
   const menuOpen = Boolean(anchorEl);
 
   const balance = useGemsStore((s) => s.balance);
-  const addGems = useGemsStore((s) => s.addGems);
 
   const { trigger } = useWebHaptics();
   const triggerRef = useRef(trigger);
@@ -185,7 +183,7 @@ export const AppHeader = () => {
             title={
               gemsActive
                 ? `${balance} gems`
-                : 'Earn gems by hitting daily targets and streaks (Phase 3)'
+                : 'Earn gems by logging meals'
             }
           >
             <Stack
@@ -226,17 +224,6 @@ export const AppHeader = () => {
               </Typography>
             </Stack>
           </Tooltip>
-          {import.meta.env.DEV && (
-            <Tooltip title="Add 5 gems (test only — DEV build)">
-              <IconButton
-                size="small"
-                onClick={() => addGems(5)}
-                sx={{ color: 'info.main' }}
-              >
-                <AddCircleOutline fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          )}
         </Stack>
 
         <DarkModeToggle />

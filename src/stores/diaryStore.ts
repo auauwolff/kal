@@ -1,7 +1,12 @@
 import { create } from 'zustand';
-import { getMockDiary } from '@/lib/mockDiary';
+import { getMockDiary, pickPlaceholderFood } from '@/lib/mockDiary';
 import type { DayDiary, MealLog, MealType } from '@/components/diary/types';
 import { MEAL_TYPES } from '@/components/diary/types';
+import { useGemsStore } from '@/stores/gemsStore';
+
+// Gems awarded per new log entry. Phase 2 placeholder; Phase 3 earn rules
+// (KAL.md §8) will replace this with target/streak-based awards.
+const GEMS_PER_LOG = 5;
 
 const toISO = (d: Date) => {
   const year = d.getFullYear();
@@ -65,13 +70,14 @@ interface DiaryStore {
   goPrevDay: () => void;
   goNextDay: () => void;
   goToday: () => void;
+  addEntry: (mealType: MealType) => void;
   moveEntry: (entryId: string, to: MealType) => void;
   deleteEntry: (entryId: string) => void;
 }
 
 const todayISO = toISO(new Date());
 
-export const useDiaryStore = create<DiaryStore>()((set) => ({
+export const useDiaryStore = create<DiaryStore>()((set, get) => ({
   selectedDate: todayISO,
   days: { [todayISO]: getMockDiary(todayISO) },
   setDate: (iso) =>
@@ -91,6 +97,39 @@ export const useDiaryStore = create<DiaryStore>()((set) => ({
       const iso = toISO(new Date());
       return { selectedDate: iso, days: seedDay(s.days, iso) };
     }),
+  addEntry: (mealType) => {
+    const iso = get().selectedDate;
+    const food = pickPlaceholderFood();
+    const now = Date.now();
+    const newEntry: MealLog = {
+      id: `${iso}-${mealType}-${food.foodId}-${now}`,
+      userId: 'mock-user',
+      date: iso,
+      mealType,
+      loggedAt: now,
+      foodId: food.foodId,
+      foodName: food.foodName,
+      brand: food.brand,
+      quantityG: food.quantityG,
+      servingLabel: food.servingLabel,
+      calories: food.calories,
+      proteinG: food.proteinG,
+      carbsG: food.carbsG,
+      fatG: food.fatG,
+    };
+    set((s) => {
+      const day = s.days[iso];
+      if (!day) return s;
+      const meals = {
+        ...day.meals,
+        [mealType]: [...day.meals[mealType], newEntry],
+      };
+      return {
+        days: { ...s.days, [iso]: recomputeTotals({ ...day, meals }) },
+      };
+    });
+    useGemsStore.getState().addGems(GEMS_PER_LOG);
+  },
   moveEntry: (entryId, to) =>
     set((s) => {
       const iso = s.selectedDate;

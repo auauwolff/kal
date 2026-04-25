@@ -53,9 +53,9 @@ export const DiaryDateHeader = () => {
           spacing={0.5}
           sx={{ position: 'absolute', left: 0, alignItems: 'center', px: 1 }}
         >
-          <LocalFireDepartment sx={{ color: streakColor, fontSize: 22 }} />
+          <LocalFireDepartment sx={{ color: streakColor, fontSize: 28 }} />
           <Typography
-            sx={{ color: streakColor, fontWeight: 700, fontSize: 16, lineHeight: 1 }}
+            sx={{ color: streakColor, fontWeight: 800, fontSize: 20, lineHeight: 1 }}
           >
             {MOCK_STREAK}
           </Typography>
