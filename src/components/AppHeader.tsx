@@ -25,12 +25,10 @@ import { useAuth } from '@workos-inc/authkit-react';
 import { useNavigate } from '@tanstack/react-router';
 import { useWebHaptics } from 'web-haptics/react';
 import { DarkModeToggle } from '@/components/DarkModeToggle';
-import {
-  useParticles,
-  type EmojiOption,
-} from '@/components/ParticlesProvider';
+import { useParticles } from '@/components/ParticlesProvider';
 import { playGemSound } from '@/lib/gemSound';
 import { useGemsStore } from '@/stores/gemsStore';
+import { GEM_EMOJIS, gemParticleCount, userInitials } from './appHeaderUtils';
 
 const shake = keyframes`
   0%, 100% { transform: translate(0, 0) rotate(0deg); }
@@ -45,24 +43,6 @@ const pop = keyframes`
   40%  { transform: scale(1.6); }
   100% { transform: scale(1); }
 `;
-
-// Gem-themed emoji set with weighted distribution. Same shape as the
-// lochie/web-haptics demo's "buzz" preset (bees + honey + flowers) but
-// re-skinned for our reward currency.
-type EmojiEntry = [emoji: string, weight: number, canFlip?: boolean];
-const GEM_EMOJI_ENTRIES: EmojiEntry[] = [
-  ['💎', 10, true],
-  ['✨', 6, true],
-  ['🔷', 3, false],
-  ['🌟', 2, true],
-];
-const GEM_EMOJIS: EmojiOption[] = GEM_EMOJI_ENTRIES.flatMap(
-  ([emoji, weight, canFlip]) =>
-    Array.from({ length: weight }, () => ({
-      emoji,
-      canFlip: canFlip ?? false,
-    })),
-);
 
 export const AppHeader = () => {
   const { user, signIn, signOut } = useAuth();
@@ -125,10 +105,7 @@ export const AppHeader = () => {
       const targetY = rect ? rect.top + rect.height / 2 : 32;
       const originX = window.innerWidth / 2;
       const originY = window.innerHeight / 2;
-      const amount = Math.min(
-        Math.max(state.lastAddedAmount * 3, 12),
-        30,
-      );
+      const amount = gemParticleCount(state.lastAddedAmount);
       createHomingRef.current(
         originX,
         originY,
@@ -144,10 +121,7 @@ export const AppHeader = () => {
   const gemsActive = balance > 0;
   const gemColor = gemsActive ? 'info.main' : 'text.disabled';
 
-  const initials =
-    (user?.firstName?.[0] ?? '') + (user?.lastName?.[0] ?? '') ||
-    user?.email?.[0]?.toUpperCase() ||
-    '?';
+  const initials = userInitials(user);
 
   const openMenu = (e: React.MouseEvent<HTMLElement>) => setAnchorEl(e.currentTarget);
   const closeMenu = () => setAnchorEl(null);
@@ -240,7 +214,7 @@ export const AppHeader = () => {
                   fontSize: '0.875rem',
                 }}
               >
-                {initials.toUpperCase()}
+                {initials}
               </Avatar>
             </IconButton>
             <Menu

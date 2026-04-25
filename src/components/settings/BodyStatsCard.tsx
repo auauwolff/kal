@@ -7,68 +7,24 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import {
-  ACTIVITY_LABELS,
-  type ActivityLevel,
-  type Sex,
-} from '@/lib/nutrition';
-import type { BodyStats } from '@/lib/userTypes';
+import { ACTIVITY_LABELS, type ActivityLevel, type Sex } from '@/lib/nutrition';
 import { useFormDraft } from '@/hooks/useFormDraft';
-import { useUserStore } from '@/stores/userStore';
-
-const ACTIVITY_ORDER: ActivityLevel[] = [
-  'sedentary',
-  'light',
-  'moderate',
-  'active',
-  'very_active',
-];
-
-const toFieldString = (v: number | undefined): string =>
-  v === undefined || Number.isNaN(v) ? '' : String(v);
-
-interface FormState {
-  heightCm: string;
-  weightKg: string;
-  age: string;
-  sex: Sex;
-  activity: ActivityLevel;
-}
-
-const toForm = (stats: BodyStats | null): FormState => ({
-  heightCm: toFieldString(stats?.heightCm),
-  weightKg: toFieldString(stats?.weightKg),
-  age: toFieldString(stats?.age),
-  sex: stats?.sex ?? 'male',
-  activity: stats?.activity ?? 'moderate',
-});
-
-const fromForm = (s: FormState): BodyStats | null => {
-  const heightCm = Number(s.heightCm);
-  const weightKg = Number(s.weightKg);
-  const age = Number(s.age);
-  if (
-    !Number.isFinite(heightCm) ||
-    !Number.isFinite(weightKg) ||
-    !Number.isFinite(age) ||
-    heightCm <= 0 ||
-    weightKg <= 0 ||
-    age <= 0
-  ) {
-    return null;
-  }
-  return { heightCm, weightKg, age, sex: s.sex, activity: s.activity };
-};
+import { useUserProfile } from '@/hooks/useUserProfile';
+import {
+  ACTIVITY_ORDER,
+  bodyStatsFromForm,
+  bodyStatsSourceKey,
+  bodyStatsToForm,
+} from './settingsUtils';
 
 export const BodyStatsCard = () => {
-  const stats = useUserStore((s) => s.bodyStats);
-  const setBodyStats = useUserStore((s) => s.setBodyStats);
+  const { bodyStats: stats, setBodyStats } = useUserProfile();
 
   const { form, setField, commit, commitWith } = useFormDraft({
     source: stats,
-    sourceKey: `${stats?.heightCm}|${stats?.weightKg}|${stats?.age}|${stats?.sex}|${stats?.activity}`,
-    toForm,
-    fromForm,
+    sourceKey: bodyStatsSourceKey(stats),
+    toForm: bodyStatsToForm,
+    fromForm: bodyStatsFromForm,
     onCommit: setBodyStats,
   });
 

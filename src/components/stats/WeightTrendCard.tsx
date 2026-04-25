@@ -1,28 +1,22 @@
 import { Card, CardContent, Stack, Typography, useTheme } from '@mui/material';
 import ReactECharts from 'echarts-for-react';
-import { getMockWeights, type StatsRange } from '@/lib/mockStats';
+import { useStatsData } from '@/hooks/useStatsData';
+import { rollingMean } from './statsUtils';
 
-interface WeightTrendCardProps {
-  range: StatsRange;
-}
-
-const rollingMean = (values: number[], window: number) =>
-  values.map((_, i) => {
-    const start = Math.max(0, i - window + 1);
-    const slice = values.slice(start, i + 1);
-    return slice.reduce((a, b) => a + b, 0) / slice.length;
-  });
-
-export const WeightTrendCard = ({ range }: WeightTrendCardProps) => {
+export const WeightTrendCard = () => {
   const theme = useTheme();
-  const data = getMockWeights(range);
+  const stats = useStatsData();
+  const data = stats?.weights ?? [];
   const dates = data.map((d) => d.date);
   const weights = data.map((d) => d.weightKg);
   const trend = rollingMean(weights, 7).map((v) => Math.round(v * 10) / 10);
 
   const latest = weights[weights.length - 1];
   const weekAgo = weights[Math.max(0, weights.length - 8)];
-  const delta = Math.round((latest - weekAgo) * 10) / 10;
+  const delta =
+    latest === undefined || weekAgo === undefined
+      ? null
+      : Math.round((latest - weekAgo) * 10) / 10;
 
   const option = {
     grid: { top: 20, right: 12, bottom: 24, left: 40 },
@@ -65,6 +59,12 @@ export const WeightTrendCard = ({ range }: WeightTrendCardProps) => {
     ],
   };
 
+  const subtitle = !stats
+    ? 'Loading…'
+    : latest === undefined || delta === null
+      ? 'No weights logged yet'
+      : `${latest.toFixed(1)} kg · ${delta >= 0 ? '+' : ''}${delta.toFixed(1)} kg / 7d`;
+
   return (
     <Card variant="outlined">
       <CardContent>
@@ -76,8 +76,7 @@ export const WeightTrendCard = ({ range }: WeightTrendCardProps) => {
             Weight
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            {latest.toFixed(1)} kg · {delta >= 0 ? '+' : ''}
-            {delta.toFixed(1)} kg / 7d
+            {subtitle}
           </Typography>
         </Stack>
         <ReactECharts option={option} style={{ height: 200 }} />

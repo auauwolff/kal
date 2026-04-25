@@ -1,20 +1,20 @@
-import { useState } from 'react';
 import {
   Box,
   Stack,
   ToggleButton,
   ToggleButtonGroup,
-  Typography,
 } from '@mui/material';
 import { WeightTrendCard } from '@/components/stats/WeightTrendCard';
 import { CalorieIntakeCard } from '@/components/stats/CalorieIntakeCard';
 import { MacroSplitCard } from '@/components/stats/MacroSplitCard';
 import { StreakHeatmapCard } from '@/components/stats/StreakHeatmapCard';
 import { ExerciseConsistencyCard } from '@/components/stats/ExerciseConsistencyCard';
-import type { StatsRange } from '@/lib/mockStats';
+import type { StatsRange } from '@/components/stats/types';
+import { useStatsStore } from '@/stores/statsStore';
 
 export const StatsPage = () => {
-  const [range, setRange] = useState<StatsRange>(30);
+  const range = useStatsStore((s) => s.range);
+  const setRange = useStatsStore((s) => s.setRange);
 
   return (
     <Box sx={{ maxWidth: 720, mx: 'auto', width: '100%', p: { xs: 2, sm: 3 } }}>
@@ -32,19 +32,11 @@ export const StatsPage = () => {
           </ToggleButtonGroup>
         </Stack>
 
-        <WeightTrendCard range={range} />
-        <CalorieIntakeCard range={range} />
-        <MacroSplitCard range={range} />
-        <StreakHeatmapCard range={range} />
-        <ExerciseConsistencyCard range={range} />
-
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          sx={{ textAlign: 'center', mt: 1 }}
-        >
-          Data is mock until the Convex schema + real queries land in the next task.
-        </Typography>
+        <WeightTrendCard />
+        <CalorieIntakeCard />
+        <MacroSplitCard />
+        <StreakHeatmapCard />
+        <ExerciseConsistencyCard />
       </Stack>
     </Box>
   );

@@ -1,24 +1,15 @@
 import { Card, CardContent, Stack, Typography, useTheme } from '@mui/material';
 import ReactECharts from 'echarts-for-react';
-import { getMockExercise, type StatsRange } from '@/lib/mockStats';
 import { EXERCISE_LABELS, type ExerciseType } from '@/components/diary/types';
+import { useStatsData } from '@/hooks/useStatsData';
+import { EXERCISE_STACK_TYPES, totalExerciseMinutes } from './statsUtils';
 
-interface ExerciseConsistencyCardProps {
-  range: StatsRange;
-}
-
-const TYPES: ExerciseType[] = ['strength', 'cardio', 'sports', 'walk', 'other'];
-
-export const ExerciseConsistencyCard = ({ range }: ExerciseConsistencyCardProps) => {
+export const ExerciseConsistencyCard = () => {
   const theme = useTheme();
-  const data = getMockExercise(range);
-  const weekLabels = data.map((w) => w.weekLabel);
-  const totalMin = data.reduce(
-    (acc, w) =>
-      acc +
-      TYPES.reduce((inner, t) => inner + w.minutes[t], 0),
-    0,
-  );
+  const stats = useStatsData();
+  const data = stats?.exerciseWeeks ?? [];
+  const weekLabels = data.map((week) => week.weekLabel);
+  const totalMin = totalExerciseMinutes(data);
 
   const colors: Record<ExerciseType, string> = {
     strength: theme.palette.primary.main,
@@ -49,12 +40,12 @@ export const ExerciseConsistencyCard = ({ range }: ExerciseConsistencyCardProps)
       axisLabel: { color: theme.palette.text.secondary },
       splitLine: { lineStyle: { color: theme.palette.divider } },
     },
-    series: TYPES.map((type) => ({
+    series: EXERCISE_STACK_TYPES.map((type) => ({
       name: EXERCISE_LABELS[type],
       type: 'bar',
       stack: 'total',
       itemStyle: { color: colors[type] },
-      data: data.map((w) => w.minutes[type]),
+      data: data.map((week) => week.minutes[type]),
       barMaxWidth: 28,
     })),
   };
@@ -70,7 +61,7 @@ export const ExerciseConsistencyCard = ({ range }: ExerciseConsistencyCardProps)
             Exercise consistency
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            {totalMin} min across {data.length} weeks
+            {stats ? `${totalMin} min across ${data.length} weeks` : 'Loading…'}
           </Typography>
         </Stack>
         <ReactECharts option={option} style={{ height: 220 }} />

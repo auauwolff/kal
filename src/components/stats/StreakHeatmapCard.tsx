@@ -1,15 +1,14 @@
 import { Card, CardContent, Stack, Typography, useTheme } from '@mui/material';
 import ReactECharts from 'echarts-for-react';
-import { getMockStreaks, type StatsRange } from '@/lib/mockStats';
+import { useStatsData } from '@/hooks/useStatsData';
+import { useStatsStore } from '@/stores/statsStore';
 
-interface StreakHeatmapCardProps {
-  range: StatsRange;
-}
-
-export const StreakHeatmapCard = ({ range }: StreakHeatmapCardProps) => {
+export const StreakHeatmapCard = () => {
   const theme = useTheme();
-  const data = getMockStreaks(range);
-  const hits = data.filter((d) => d.status >= 2).length;
+  const range = useStatsStore((s) => s.range);
+  const stats = useStatsData();
+  const data = stats?.days ?? [];
+  const hits = data.filter((d) => d.streakStatus >= 2).length;
 
   const start = data[0]?.date ?? '';
   const end = data[data.length - 1]?.date ?? '';
@@ -42,7 +41,7 @@ export const StreakHeatmapCard = ({ range }: StreakHeatmapCardProps) => {
       left: 30,
       right: 10,
       cellSize: ['auto', 14],
-      range: [start, end],
+      range: start && end ? [start, end] : undefined,
       dayLabel: {
         color: theme.palette.text.secondary,
         firstDay: 1,
@@ -60,7 +59,7 @@ export const StreakHeatmapCard = ({ range }: StreakHeatmapCardProps) => {
     series: {
       type: 'heatmap',
       coordinateSystem: 'calendar',
-      data: data.map((d) => [d.date, d.status]),
+      data: data.map((d) => [d.date, d.streakStatus]),
     },
   };
 
@@ -75,7 +74,7 @@ export const StreakHeatmapCard = ({ range }: StreakHeatmapCardProps) => {
             Streak history
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            {hits} / {data.length} days on target
+            {stats ? `${hits} / ${data.length} days on target` : 'Loading…'}
           </Typography>
         </Stack>
         <ReactECharts

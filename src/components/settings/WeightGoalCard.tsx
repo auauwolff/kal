@@ -9,87 +9,34 @@ import {
   ToggleButtonGroup,
   Typography,
 } from '@mui/material';
-import {
-  calorieTargetForGoal,
-  type GoalType,
-} from '@/lib/nutrition';
-import type { WeightGoal } from '@/lib/userTypes';
+import { calorieTargetForGoal, type GoalType } from '@/lib/nutrition';
 import { todayISO } from '@/lib/date';
 import { useFormDraft } from '@/hooks/useFormDraft';
-import { useUserStore } from '@/stores/userStore';
-
-const GOAL_OPTIONS: { value: GoalType; label: string }[] = [
-  { value: 'lose', label: 'Lose' },
-  { value: 'maintain', label: 'Maintain' },
-  { value: 'gain', label: 'Gain' },
-  { value: 'recomp', label: 'Recomp' },
-];
-
-const defaultTargetDate = () => {
-  const d = new Date();
-  d.setMonth(d.getMonth() + 6);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-};
-
-interface FormState {
-  type: GoalType;
-  targetWeightKg: string;
-  targetDateISO: string;
-}
-
-interface Source {
-  goal: WeightGoal | null;
-  currentWeightKg: number | undefined;
-}
-
-const toForm = ({ goal, currentWeightKg }: Source): FormState => ({
-  type: goal?.type ?? 'maintain',
-  targetWeightKg: goal?.targetWeightKg
-    ? String(goal.targetWeightKg)
-    : currentWeightKg
-      ? String(currentWeightKg)
-      : '',
-  targetDateISO: goal?.targetDateISO ?? defaultTargetDate(),
-});
-
-const fromForm =
-  (currentWeightKg: number | undefined) =>
-  (s: FormState): WeightGoal | null => {
-    if (!s.targetDateISO) return null;
-    if (s.type === 'maintain') {
-      return {
-        type: 'maintain',
-        targetWeightKg: currentWeightKg ?? 0,
-        targetDateISO: s.targetDateISO,
-      };
-    }
-    const targetWeightKg = Number(s.targetWeightKg);
-    if (!Number.isFinite(targetWeightKg) || targetWeightKg <= 0) return null;
-    return { type: s.type, targetWeightKg, targetDateISO: s.targetDateISO };
-  };
+import { useUserProfile } from '@/hooks/useUserProfile';
+import {
+  GOAL_OPTIONS,
+  weightGoalFromForm,
+  weightGoalSourceKey,
+  weightGoalToForm,
+} from './settingsUtils';
 
 export const WeightGoalCard = () => {
-  const stats = useUserStore((s) => s.bodyStats);
-  const goal = useUserStore((s) => s.goal);
-  const setGoal = useUserStore((s) => s.setGoal);
+  const { bodyStats: stats, goal, setGoal } = useUserProfile();
 
   const currentWeightKg = stats?.weightKg;
 
   const { form, setField, commit, commitWith } = useFormDraft({
     source: { goal, currentWeightKg },
-    sourceKey: `${goal?.type}|${goal?.targetWeightKg}|${goal?.targetDateISO}|${currentWeightKg}`,
-    toForm,
-    fromForm: fromForm(currentWeightKg),
+    sourceKey: weightGoalSourceKey({ goal, currentWeightKg }),
+    toForm: weightGoalToForm,
+    fromForm: weightGoalFromForm(currentWeightKg),
     onCommit: setGoal,
   });
 
   // Live preview of the implied weekly rate, only when we have full info.
   const ratePreview = useMemo(() => {
     if (!stats) return null;
-    const parsed = fromForm(stats.weightKg)(form);
+    const parsed = weightGoalFromForm(stats.weightKg)(form);
     if (!parsed) return null;
     const { weeklyDeltaKg, clamped } = calorieTargetForGoal({
       ...stats,

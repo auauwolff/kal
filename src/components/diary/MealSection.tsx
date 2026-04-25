@@ -25,9 +25,11 @@ import {
 } from '@mui/icons-material';
 import toast from 'react-hot-toast';
 import type { MealLog, MealType } from './types';
-import { MEAL_LABELS, MEAL_TYPES } from './types';
+import { MEAL_LABELS } from './types';
+import { mealTotals, otherMealTypes } from './diaryUtils';
 import { useDiary } from './useDiary';
 import { AddFoodDialog } from './AddFoodDialog';
+import { errorMessage } from '@/lib/errors';
 
 interface MealSectionProps {
   mealType: MealType;
@@ -46,9 +48,6 @@ interface EntryRowProps {
   onDelete: () => void;
 }
 
-const errorMessage = (error: unknown, fallback: string) =>
-  error instanceof Error ? error.message : fallback;
-
 const EntryRow = ({ entry, onMove, onDelete }: EntryRowProps) => {
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(menuAnchor);
@@ -64,7 +63,7 @@ const EntryRow = ({ entry, onMove, onDelete }: EntryRowProps) => {
     onDelete();
   };
 
-  const otherMealTypes = MEAL_TYPES.filter((t) => t !== entry.mealType);
+  const moveTargets = otherMealTypes(entry.mealType);
 
   return (
     <Stack direction="row" sx={{ alignItems: 'center', gap: 1 }}>
@@ -96,7 +95,7 @@ const EntryRow = ({ entry, onMove, onDelete }: EntryRowProps) => {
         transformOrigin={{ horizontal: 'right', vertical: 'top' }}
         slotProps={{ paper: { sx: { minWidth: 200 } } }}
       >
-        {otherMealTypes.map((to) => (
+        {moveTargets.map((to) => (
           <MenuItem key={to} onClick={() => handleMove(to)}>
             <ListItemIcon>{MEAL_ICONS[to]}</ListItemIcon>
             <ListItemText>Move to {MEAL_LABELS[to]}</ListItemText>
@@ -119,15 +118,7 @@ export const MealSection = ({ mealType }: MealSectionProps) => {
   const { meals, moveEntry, deleteEntry } = useDiary();
   const [dialogOpen, setDialogOpen] = useState(false);
   const entries = meals[mealType];
-  const totals = entries.reduce(
-    (acc, e) => ({
-      calories: acc.calories + e.calories,
-      proteinG: acc.proteinG + e.proteinG,
-      carbsG: acc.carbsG + e.carbsG,
-      fatG: acc.fatG + e.fatG,
-    }),
-    { calories: 0, proteinG: 0, carbsG: 0, fatG: 0 },
-  );
+  const totals = mealTotals(entries);
 
   const handleAdd = () => setDialogOpen(true);
 

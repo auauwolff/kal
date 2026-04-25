@@ -6,7 +6,6 @@ import {
   type MutationCtx,
 } from './_generated/server';
 import { internal } from './_generated/api';
-import { AU_FOODS_SEED, type FoodSeedItem } from './foodsSeed';
 
 const foodSourceValidator = v.union(
   v.literal('ausnut'),
@@ -165,12 +164,6 @@ export const searchFoods = query({
   },
 });
 
-const buildSearchText = (f: FoodSeedItem): string =>
-  [f.name, f.brand ?? '', ...(f.aliases ?? [])]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
-
 const buildIngestSearchText = (item: IngestItem): string =>
   [item.name, item.brand ?? ''].filter(Boolean).join(' ').toLowerCase().trim();
 
@@ -198,37 +191,6 @@ const ingestBatchHandler = async (
   }
   return { inserted, updated };
 };
-
-// Hand-curated seed for chain restaurants and AU-specific brands. Whole-food
-// nutrition comes from the AUSNUT/AFCD ETL (`scripts/seedFoods.ts`). The clear
-// loop below only deletes `chain` and `branded_au` rows so a `seed --force`
-// run never wipes the ~7K ETL'd rows.
-export const seed = internalMutation({
-  args: { force: v.optional(v.boolean()) },
-  handler: async (ctx, { force }) => {
-    const existing = await ctx.db.query('foods').take(1);
-    if (existing.length > 0 && !force) {
-      return { inserted: 0, cleared: 0, skipped: true as const };
-    }
-    let cleared = 0;
-    if (existing.length > 0) {
-      for await (const row of ctx.db.query('foods')) {
-        if (row.source !== 'chain' && row.source !== 'branded_au') continue;
-        await ctx.db.delete(row._id);
-        cleared++;
-      }
-    }
-    for (const f of AU_FOODS_SEED) {
-      const { aliases: _aliases, ...rest } = f;
-      await ctx.db.insert('foods', { ...rest, searchText: buildSearchText(f) });
-    }
-    return {
-      inserted: AU_FOODS_SEED.length,
-      cleared,
-      skipped: false as const,
-    };
-  },
-});
 
 export const ingestBatch = internalMutation({
   args: { items: v.array(ingestItemValidator) },

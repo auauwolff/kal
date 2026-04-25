@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   AppBar,
   Box,
@@ -30,147 +30,21 @@ import { api } from '../../../convex/_generated/api';
 import type { Doc } from '../../../convex/_generated/dataModel';
 import type { MealLog } from './types';
 import { MEAL_LABELS, type MealType } from './types';
+import {
+  SOURCE_LABELS,
+  portionOptionsForFood,
+  scaledNutritionForQuantity,
+  servingCaloriesForFood,
+} from './addFoodDialogUtils';
 import { useDiary } from './useDiary';
+import { useDebounce } from '@/hooks/useDebounce';
+import { errorMessage } from '@/lib/errors';
 
 interface AddFoodDialogProps {
   open: boolean;
   mealType: MealType;
   onClose: () => void;
 }
-
-interface PortionOption {
-  label: string;
-  grams: number;
-  helper?: string;
-}
-
-const useDebounce = <T,>(value: T, delayMs: number): T => {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const id = setTimeout(() => setDebounced(value), delayMs);
-    return () => clearTimeout(id);
-  }, [value, delayMs]);
-  return debounced;
-};
-
-const round1 = (n: number) => Math.round(n * 10) / 10;
-
-const errorMessage = (error: unknown, fallback: string) =>
-  error instanceof Error ? error.message : fallback;
-
-const SOURCE_LABELS: Record<Doc<'foods'>['source'], string> = {
-  afcd: 'AFCD',
-  ausnut: 'AUSNUT',
-  branded_au: 'Brand',
-  chain: 'Chain',
-  usda: 'USDA',
-  user_contributed: 'Custom',
-  openfoodfacts_cache: 'Barcode',
-};
-
-const normalize = (value: string) => value.toLowerCase();
-
-const basePortionOptions = (food: Doc<'foods'>): PortionOption[] => [
-  ...food.commonPortions.map((p) => ({ label: p.label, grams: p.grams })),
-  { label: `${food.defaultServingG} g`, grams: food.defaultServingG, helper: 'default' },
-  { label: '100 g', grams: 100, helper: 'weighed' },
-];
-
-const friendlyPortionOptions = (food: Doc<'foods'>): PortionOption[] => {
-  const name = normalize(`${food.brand ?? ''} ${food.name}`);
-  const options: PortionOption[] = [];
-
-  if (name.includes('pizza')) {
-    options.push(
-      { label: '1 slice', grams: 107, helper: '~285 kcal if pizza is 266 kcal/100g' },
-      { label: '2 slices', grams: 214 },
-      { label: '1/2 pizza', grams: 400 },
-      { label: 'Whole pizza', grams: 800 },
-    );
-  }
-
-  if (name.includes('bread') || name.includes('toast') || name.includes('sourdough')) {
-    options.push(
-      { label: '1 slice', grams: 35 },
-      { label: '2 slices', grams: 70 },
-    );
-  }
-
-  if (name.includes('cake') || name.includes('cheesecake') || name.includes('brownie')) {
-    options.push(
-      { label: 'Small slice', grams: 75 },
-      { label: '1 slice', grams: 100 },
-      { label: 'Large slice', grams: 150 },
-    );
-  }
-
-  if (name.includes('sandwich')) {
-    options.push(
-      { label: '1/2 sandwich', grams: 100 },
-      { label: '1 sandwich', grams: 200 },
-    );
-  }
-
-  if (name.includes('burger')) {
-    options.push({ label: '1 burger', grams: Math.max(food.defaultServingG, 220) });
-  }
-
-  if (name.includes('wrap') || name.includes('burrito')) {
-    options.push(
-      { label: '1/2 wrap', grams: 150 },
-      { label: '1 wrap', grams: 300 },
-    );
-  }
-
-  if (name.includes('banana')) {
-    options.push(
-      { label: 'Small banana', grams: 100 },
-      { label: 'Medium banana', grams: 118 },
-      { label: 'Large banana', grams: 136 },
-    );
-  }
-
-  if (name.includes('apple')) {
-    options.push(
-      { label: 'Small apple', grams: 150 },
-      { label: 'Medium apple', grams: 180 },
-      { label: 'Large apple', grams: 220 },
-    );
-  }
-
-  if (name.includes('rice')) {
-    options.push(
-      { label: '1/2 cup cooked', grams: 80 },
-      { label: '1 cup cooked', grams: 160 },
-      { label: '2 cups cooked', grams: 320 },
-    );
-  }
-
-  if (name.includes('pasta') || name.includes('spaghetti')) {
-    options.push(
-      { label: '1 cup cooked', grams: 140 },
-      { label: '2 cups cooked', grams: 280 },
-    );
-  }
-
-  return options;
-};
-
-const portionOptionsForFood = (food: Doc<'foods'>): PortionOption[] => {
-  const seen = new Set<string>();
-  const addUnique = (option: PortionOption, acc: PortionOption[]) => {
-    if (!Number.isFinite(option.grams) || option.grams <= 0) return;
-    const key = `${option.label.toLowerCase()}-${Math.round(option.grams)}`;
-    if (seen.has(key)) return;
-    seen.add(key);
-    acc.push({ ...option, grams: Math.round(option.grams) });
-  };
-
-  const options: PortionOption[] = [];
-  for (const option of friendlyPortionOptions(food)) addUnique(option, options);
-  for (const option of basePortionOptions(food)) addUnique(option, options);
-  return options.slice(0, 10);
-};
 
 export const AddFoodDialog = ({ open, mealType, onClose }: AddFoodDialogProps) => {
   const [search, setSearch] = useState('');
@@ -233,15 +107,7 @@ export const AddFoodDialog = ({ open, mealType, onClose }: AddFoodDialogProps) =
       });
   };
 
-  const scale = quantityG / 100;
-  const scaled = picked && quantityG > 0
-    ? {
-        calories: Math.round(picked.nutrientsPer100g.calories * scale),
-        proteinG: round1(picked.nutrientsPer100g.proteinG * scale),
-        carbsG: round1(picked.nutrientsPer100g.carbsG * scale),
-        fatG: round1(picked.nutrientsPer100g.fatG * scale),
-      }
-    : null;
+  const scaled = scaledNutritionForQuantity(picked, quantityG);
 
   return (
     <Dialog
@@ -384,9 +250,7 @@ export const AddFoodDialog = ({ open, mealType, onClose }: AddFoodDialogProps) =
             ) : (
               <List disablePadding>
                 {results.map((food) => {
-                  const servingKcal = Math.round(
-                    (food.nutrientsPer100g.calories * food.defaultServingG) / 100,
-                  );
+                  const servingKcal = servingCaloriesForFood(food);
                   return (
                     <ListItemButton key={food._id} onClick={() => handlePick(food)}>
                       <Box sx={{ flexGrow: 1, minWidth: 0 }}>

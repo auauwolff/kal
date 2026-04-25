@@ -22,32 +22,21 @@ import {
   PictureAsPdf,
   TableChart,
 } from '@mui/icons-material';
-import { useMutation } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import toast from 'react-hot-toast';
 import { api } from '../../../convex/_generated/api';
-import { formatDayLabel, getTodayISO, useDiaryStore } from '@/stores/diaryStore';
-
-// Wired to user.current_streak in Phase 3 (see documents/KAL.md §6).
-const MOCK_STREAK = 0;
-
-const shiftDate = (iso: string, days: number) => {
-  const d = new Date(iso + 'T00:00:00');
-  d.setDate(d.getDate() + days);
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
-
-const errorMessage = (error: unknown, fallback: string) =>
-  error instanceof Error ? error.message : fallback;
+import { getTodayISO, useDiaryStore } from '@/stores/diaryStore';
+import { formatDayLabel, shiftISODate } from '@/lib/date';
+import { errorMessage } from '@/lib/errors';
 
 export const DiaryDateHeader = () => {
   const { selectedDate, goPrevDay, goNextDay, goToday } = useDiaryStore();
   const copyDay = useMutation(api.meal_logs.copyDay);
+  const user = useQuery(api.users.get, {});
+  const streak = user?.currentStreak ?? 0;
   const isToday = selectedDate === getTodayISO();
   const isTodayOrFuture = selectedDate >= getTodayISO();
-  const streakActive = MOCK_STREAK > 0;
+  const streakActive = streak > 0;
   const streakColor = streakActive ? 'primary.main' : 'text.disabled';
 
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
@@ -62,7 +51,7 @@ export const DiaryDateHeader = () => {
 
   const handleCopyYesterday = () => {
     closeMenu();
-    const fromDate = shiftDate(selectedDate, -1);
+    const fromDate = shiftISODate(selectedDate, -1);
     void copyDay({ fromDate, toDate: selectedDate })
       .then(({ copied }) => {
         const noun = copied === 1 ? 'item' : 'items';
@@ -80,7 +69,7 @@ export const DiaryDateHeader = () => {
 
   return (
     <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <Tooltip title={streakActive ? `${MOCK_STREAK}-day streak` : 'No streak yet'}>
+      <Tooltip title={streakActive ? `${streak}-day streak` : 'No streak yet'}>
         <Stack
           direction="row"
           spacing={0.5}
@@ -90,7 +79,7 @@ export const DiaryDateHeader = () => {
           <Typography
             sx={{ color: streakColor, fontWeight: 800, fontSize: 20, lineHeight: 1 }}
           >
-            {MOCK_STREAK}
+            {streak}
           </Typography>
         </Stack>
       </Tooltip>

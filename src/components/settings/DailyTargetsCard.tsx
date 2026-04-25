@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import {
   Box,
   Button,
@@ -9,78 +9,33 @@ import {
   Typography,
 } from '@mui/material';
 import { RestartAlt } from '@mui/icons-material';
-import { calorieTargetForGoal, macroTargets } from '@/lib/nutrition';
 import type { UserTargets } from '@/lib/userTypes';
-import { todayISO } from '@/lib/date';
-import { useUserStore } from '@/stores/userStore';
-
-interface FieldDef {
-  key: keyof UserTargets;
-  label: string;
-  unit: string;
-}
-
-const FIELDS: FieldDef[] = [
-  { key: 'calories', label: 'Calories', unit: 'kcal' },
-  { key: 'proteinG', label: 'Protein', unit: 'g' },
-  { key: 'carbsG', label: 'Carbs', unit: 'g' },
-  { key: 'fatG', label: 'Fat', unit: 'g' },
-];
+import { useUserProfile } from '@/hooks/useUserProfile';
+import {
+  DAILY_TARGET_FIELDS,
+  targetsDraftFromTargets,
+  targetsKey,
+} from './settingsUtils';
 
 export const DailyTargetsCard = () => {
-  const stats = useUserStore((s) => s.bodyStats);
-  const goal = useUserStore((s) => s.goal);
-  const targets = useUserStore((s) => s.targets);
-  const setTarget = useUserStore((s) => s.setTarget);
-  const resetTargetsToAuto = useUserStore((s) => s.resetTargetsToAuto);
+  const { targets, autoTargets, setTarget, resetTargetsToAuto } = useUserProfile();
 
-  const targetsKey = `${targets.calories.value}|${targets.proteinG.value}|${targets.carbsG.value}|${targets.fatG.value}`;
+  const currentTargetsKey = targetsKey(targets);
 
   // Local string state so users can clear a field without it snapping back.
-  const [draft, setDraft] = useState<Record<keyof UserTargets, string>>({
-    calories: String(targets.calories.value),
-    proteinG: String(targets.proteinG.value),
-    carbsG: String(targets.carbsG.value),
-    fatG: String(targets.fatG.value),
-  });
-  const [lastKey, setLastKey] = useState(targetsKey);
+  const [draft, setDraft] = useState<Record<keyof UserTargets, string>>(() =>
+    targetsDraftFromTargets(targets),
+  );
+  const [lastKey, setLastKey] = useState(currentTargetsKey);
 
-  // Re-sync drafts when the store mutates from outside (auto-calc, reset,
+  // Re-sync drafts when Convex data changes from outside (auto-calc, reset,
   // body-stat recalc). The "adjust state during render" idiom — see
   // https://react.dev/learn/you-might-not-need-an-effect — avoids the
   // cascading-render risk of doing the same in useEffect.
-  if (lastKey !== targetsKey) {
-    setLastKey(targetsKey);
-    setDraft({
-      calories: String(targets.calories.value),
-      proteinG: String(targets.proteinG.value),
-      carbsG: String(targets.carbsG.value),
-      fatG: String(targets.fatG.value),
-    });
+  if (lastKey !== currentTargetsKey) {
+    setLastKey(currentTargetsKey);
+    setDraft(targetsDraftFromTargets(targets));
   }
-
-  const autoTargets = useMemo(() => {
-    if (!stats || !goal) return null;
-    const targetWeightKg =
-      goal.type === 'maintain' ? stats.weightKg : goal.targetWeightKg;
-    const { calories } = calorieTargetForGoal({
-      ...stats,
-      targetWeightKg,
-      targetDateISO: goal.targetDateISO,
-      todayISO: todayISO(),
-    });
-    const macros = macroTargets({
-      weightKg: stats.weightKg,
-      calorieTarget: calories,
-      goal: goal.type,
-    });
-    return {
-      calories,
-      proteinG: macros.proteinG,
-      carbsG: macros.carbsG,
-      fatG: macros.fatG,
-    };
-  }, [stats, goal]);
 
   const commitField = (key: keyof UserTargets, raw: string) => {
     const parsed = Number(raw);
@@ -88,7 +43,7 @@ export const DailyTargetsCard = () => {
     setTarget(key, Math.round(parsed));
   };
 
-  const anyOverride = FIELDS.some((f) => targets[f.key].isOverride);
+  const anyOverride = DAILY_TARGET_FIELDS.some((f) => targets[f.key].isOverride);
   const canAutoCalc = !!autoTargets;
 
   return (
@@ -110,7 +65,7 @@ export const DailyTargetsCard = () => {
             gap: 2,
           }}
         >
-          {FIELDS.map((f) => {
+          {DAILY_TARGET_FIELDS.map((f) => {
             const t = targets[f.key];
             const auto = autoTargets?.[f.key];
             const showAutoCaption =

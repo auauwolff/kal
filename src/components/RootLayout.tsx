@@ -6,7 +6,6 @@ import { createAppTheme } from '@/theme';
 import { useThemeStore } from '@/stores/themeStore';
 import { AppHeader } from '@/components/AppHeader';
 import { BottomNav } from '@/components/BottomNav';
-import { ProfileSync } from '@/components/ProfileSync';
 
 export const RootLayout = () => {
   const isDarkMode = useThemeStore((state) => state.isDarkMode);
@@ -15,7 +14,6 @@ export const RootLayout = () => {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <ProfileSync />
       <Box
         sx={{
           display: 'flex',

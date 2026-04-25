@@ -1,14 +1,11 @@
 import { Card, CardContent, Stack, Typography, useTheme } from '@mui/material';
 import ReactECharts from 'echarts-for-react';
-import { getMockMacros, type StatsRange } from '@/lib/mockStats';
+import { useStatsData } from '@/hooks/useStatsData';
 
-interface MacroSplitCardProps {
-  range: StatsRange;
-}
-
-export const MacroSplitCard = ({ range }: MacroSplitCardProps) => {
+export const MacroSplitCard = () => {
   const theme = useTheme();
-  const data = getMockMacros(range);
+  const stats = useStatsData();
+  const data = stats?.days ?? [];
   const dates = data.map((d) => d.date);
 
   // Convert to kcal for honest stacked comparison (4/4/9 rule).
@@ -84,7 +81,9 @@ export const MacroSplitCard = ({ range }: MacroSplitCardProps) => {
             Macro split
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            Stacked kcal from protein / carbs / fat per day
+            {stats
+              ? 'Stacked kcal from protein / carbs / fat per day'
+              : 'Loading…'}
           </Typography>
         </Stack>
         <ReactECharts option={option} style={{ height: 220 }} />

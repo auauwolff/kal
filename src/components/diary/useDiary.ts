@@ -1,12 +1,17 @@
 import { useCallback } from 'react';
 import { useMutation, useQuery } from 'convex/react';
-import { useShallow } from 'zustand/react/shallow';
 import { api } from '../../../convex/_generated/api';
 import type { Id } from '../../../convex/_generated/dataModel';
-import type { DayDiary, MealLog, MealType } from './types';
+import type {
+  DayDiary,
+  ExerciseIntensity,
+  ExerciseType,
+  MealLog,
+  MealType,
+} from './types';
 import { useGemsStore } from '@/stores/gemsStore';
 import { useDiaryStore } from '@/stores/diaryStore';
-import { selectDailyTargets, useUserStore } from '@/stores/userStore';
+import { dailyTargetsFromProfile, profileFromUser } from '@/lib/profile';
 
 const GEMS_PER_LOG = 5;
 
@@ -15,6 +20,13 @@ interface AddEntryArgs {
   foodId: string;
   quantityG: number;
   servingLabel?: string;
+}
+
+interface AddExerciseArgs {
+  type: ExerciseType;
+  durationMin: number;
+  intensity: ExerciseIntensity;
+  notes?: string;
 }
 
 const emptyDay = (date: string): DayDiary => ({
@@ -32,11 +44,14 @@ export const useDiary = () => {
   const recentFoodsQuery = useQuery(api.meal_logs.recentFoods, { limit: 10 }) as
     | MealLog[]
     | undefined;
+  const userQuery = useQuery(api.users.get, {});
   const addMealLog = useMutation(api.meal_logs.add);
   const relogMealLog = useMutation(api.meal_logs.relog);
   const moveMealLog = useMutation(api.meal_logs.move);
   const removeMealLog = useMutation(api.meal_logs.remove);
-  const targets = useUserStore(useShallow(selectDailyTargets));
+  const addExerciseLog = useMutation(api.exercise_logs.add);
+  const removeExerciseLog = useMutation(api.exercise_logs.remove);
+  const targets = dailyTargetsFromProfile(profileFromUser(userQuery));
 
   const addEntry = useCallback(
     async ({ mealType, foodId, quantityG, servingLabel }: AddEntryArgs) => {
@@ -81,6 +96,26 @@ export const useDiary = () => {
     [removeMealLog],
   );
 
+  const addExercise = useCallback(
+    async ({ type, durationMin, intensity, notes }: AddExerciseArgs) => {
+      await addExerciseLog({
+        date: selectedDate,
+        type,
+        durationMin,
+        intensity,
+        ...(notes ? { notes } : {}),
+      });
+    },
+    [addExerciseLog, selectedDate],
+  );
+
+  const deleteExercise = useCallback(
+    async (entryId: string) => {
+      await removeExerciseLog({ exerciseLogId: entryId as Id<'exercise_logs'> });
+    },
+    [removeExerciseLog],
+  );
+
   return {
     ...(dayQuery ?? emptyDay(selectedDate)),
     targets,
@@ -89,5 +124,7 @@ export const useDiary = () => {
     relogEntry,
     moveEntry,
     deleteEntry,
+    addExercise,
+    deleteExercise,
   };
 };

@@ -1,18 +1,16 @@
 import { Card, CardContent, Stack, Typography, useTheme } from '@mui/material';
 import ReactECharts from 'echarts-for-react';
-import { getMockCalories, type StatsRange } from '@/lib/mockStats';
+import { useStatsData } from '@/hooks/useStatsData';
+import { average } from './statsUtils';
 
-interface CalorieIntakeCardProps {
-  range: StatsRange;
-}
-
-export const CalorieIntakeCard = ({ range }: CalorieIntakeCardProps) => {
+export const CalorieIntakeCard = () => {
   const theme = useTheme();
-  const data = getMockCalories(range);
+  const stats = useStatsData();
+  const data = stats?.days ?? [];
   const dates = data.map((d) => d.date);
   const calories = data.map((d) => d.calories);
-  const target = data[0]?.target ?? 2600;
-  const avg = Math.round(calories.reduce((a, b) => a + b, 0) / calories.length);
+  const target = data[0]?.targetCalories ?? 2600;
+  const avg = average(calories);
 
   const option = {
     grid: { top: 20, right: 12, bottom: 24, left: 48 },
@@ -36,13 +34,13 @@ export const CalorieIntakeCard = ({ range }: CalorieIntakeCardProps) => {
       {
         name: 'Calories',
         type: 'bar',
-        data: calories.map((v) => ({
-          value: v,
+        data: calories.map((value) => ({
+          value,
           itemStyle: {
             color:
-              Math.abs(v - target) / target <= 0.1
+              target > 0 && Math.abs(value - target) / target <= 0.1
                 ? theme.palette.success.main
-                : v > target
+                : value > target
                   ? theme.palette.warning.main
                   : theme.palette.info.main,
             borderRadius: [4, 4, 0, 0],
@@ -69,7 +67,7 @@ export const CalorieIntakeCard = ({ range }: CalorieIntakeCardProps) => {
             Calorie intake
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            avg {avg} / target {target} kcal
+            {stats ? `avg ${avg} / target ${target} kcal` : 'Loading…'}
           </Typography>
         </Stack>
         <ReactECharts option={option} style={{ height: 200 }} />
