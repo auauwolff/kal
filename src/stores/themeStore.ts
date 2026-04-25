@@ -7,14 +7,10 @@ interface ThemeState {
   setDarkMode: (value: boolean) => void;
 }
 
-const prefersDark =
-  typeof window !== 'undefined' &&
-  window.matchMedia?.('(prefers-color-scheme: dark)').matches;
-
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set) => ({
-      isDarkMode: prefersDark ?? false,
+      isDarkMode: false,
       toggleTheme: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
       setDarkMode: (value) => set({ isDarkMode: value }),
     }),

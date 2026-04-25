@@ -48,7 +48,6 @@ export interface DailyTotals {
 
 export interface DayDiary {
   date: string;
-  targets: DailyTargets;
   totals: DailyTotals;
   meals: Record<MealType, MealLog[]>;
   exercise: ExerciseLog[];

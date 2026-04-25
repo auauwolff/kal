@@ -10,7 +10,8 @@ This is the single canonical document for the Kal project. It supersedes `archiv
 
 - ✅ **Phase 0 — Scaffold** (2026-04-24): Vite + React 19 + MUI + Zustand + TanStack Router + Convex + WorkOS AuthKit + `vite-plugin-pwa` all wired. Installs to phone via `public/manifest.json`.
 - ✅ **Phase 2 — App shell** (2026-04-24): sticky AppHeader (Kal icon · title · dark-mode · avatar menu) + 3-tab BottomNav (Diary · Stats · Settings). Diary and Stats rendered with **mock data** in shapes matching §6.
-- ⏭️ **Next:** Convex schema + real queries — widen `convex/schema.ts` to cover `users` extensions, `meal_logs`, `exercise_logs`, `weights`, `favorites`, `meal_templates` via `@convex-dev/migrations`; then replace `src/lib/mockDiary.ts` + `src/lib/mockStats.ts` with Convex queries. After that: Phase 1 AUSNUT ETL → real food DB → real add-food flow.
+- ✅ **Phase 2 — Profile & targets** (2026-04-25): Settings page houses Body Stats, Weight Goal, and Daily Targets cards. Profile + targets persisted via Zustand `persist` (`kal-profile` in localStorage) with field names mirroring §6 so the future Convex `users` migration is mechanical. Diary energy gauge + macro rings consume the live targets via `selectDailyTargets`. Light mode is the default; dark-mode toggle lives only in the AppHeader.
+- ⏭️ **Next:** Convex schema + real queries — widen `convex/schema.ts` to cover `users` extensions, `meal_logs`, `exercise_logs`, `weights`, `favorites`, `meal_templates` via `@convex-dev/migrations`; the future `users.upsertProfile` mutation will accept exactly the persisted `kal-profile` shape. Then replace `src/lib/mockDiary.ts` + `src/lib/mockStats.ts` with Convex queries. After that: Phase 1 AUSNUT ETL → real food DB → real add-food flow.
 
 ---
 
@@ -114,18 +115,22 @@ MFP and Cronometer both have weak AU coverage. Crowdsourced MFP entries for Tim 
 
 ### Defaults for onboarding
 
-For active users (lift + cardio + daily activity):
+Implemented in `src/lib/nutrition.ts`. Mifflin-St Jeor BMR × activity multiplier — accounts for age + sex, which the older "30–33 kcal/kg" heuristic does not.
 
 | Metric | Formula |
 |---|---|
-| Calories | ~30–33 kcal / kg bodyweight (slow recomp) |
-| Protein | 1.8–2.2 g / kg |
-| Fat | 0.8–1.0 g / kg |
-| Carbs | Remainder of calories |
+| BMR (Mifflin-St Jeor) | `10·kg + 6.25·cm − 5·age + (male ? 5 : −161)` |
+| TDEE | `BMR × activity` (sedentary 1.2, light 1.375, moderate 1.55, active 1.725, very_active 1.9) |
+| Calorie target | `TDEE + clamped daily delta from goal` (delta = `(targetWeight − currentWeight) × 7700 / daysToGoal`, clamped to ±1%/wk loss / ±0.5%/wk gain of bodyweight, floor 1500 kcal) |
+| Protein | `2.2 g/kg` for lose/recomp, `1.8 g/kg` otherwise |
+| Fat | `0.9 g/kg` |
+| Carbs | Remainder of calories: `(calorieTarget − protein·4 − fat·9) / 4` |
 
-**Example — 82 kg active male, slow recomp:** ~2,600 kcal · 165 g protein · 80 g fat · 240 g carbs.
+**Example — 185 cm / 82 kg / 34 M / active, lose to 76 kg by 2027-05-01 (~371 days from 2026-04-25):** BMR 1811 → TDEE ≈ 3124 → daily delta −124 kcal (well within the safe-rate clamp) → **target ≈ 3000 kcal · 180 g protein · 74 g fat · 390 g carbs**.
 
-User can override every number in settings. Always default generous on calories/protein — risk of under-eating for recomp users outweighs over-eating risk.
+The Settings → Daily Targets card lets the user override every value. Each `OverridableTarget` carries an `isOverride` flag; auto-recompute on body-stat or goal change only touches fields where `isOverride === false`. "Reset to auto" clears all overrides and re-derives.
+
+Always default generous on calories/protein — risk of under-eating for recomp users outweighs over-eating risk.
 
 ### Weekly adjustment algorithm (MacroFactor-style)
 
@@ -333,7 +338,7 @@ The logging loop is the whole game. Everything here is Phase 2 unless marked oth
 
 ### App chrome
 
-- **Top app bar:** **gem balance chip** on the left (`Diamond` icon + count, sapphire `info.main` when active, dimmed `text.disabled` at 0; wired to `user.gem_balance` in Phase 3 — earn rules in §8). Phase 2 placeholder: every new log entry awards `+5` gems and triggers the celebration (Web Audio level-up jingle, `web-haptics` "buzz" haptic, full-screen canvas particle burst from screen-center → homing into the chip; see `src/components/ParticlesProvider.tsx`). The +5/log earn conflicts with §3.2 — keep until Phase 3 earn rules replace it. Right side of the bar: dark-mode toggle and avatar menu (profile/settings/sign-out). The streak chip moved to the Diary day-header row — streaks count logging days, so they belong with the date. MUI `AppBar` with sticky positioning.
+- **Top app bar:** **gem balance chip** on the left (`Diamond` icon + count, sapphire `info.main` when active, dimmed `text.disabled` at 0; wired to `user.gem_balance` in Phase 3 — earn rules in §8). Phase 2 placeholder: every new log entry awards `+5` gems and triggers the celebration (Web Audio level-up jingle, `web-haptics` "buzz" haptic, full-screen canvas particle burst from screen-center → homing into the chip; see `src/components/ParticlesProvider.tsx`). The +5/log earn conflicts with §3.2 — keep until Phase 3 earn rules replace it. Right side of the bar: dark-mode toggle (the only place it lives — light mode is the default and Settings does not duplicate the toggle) and avatar menu (profile/settings/sign-out). The streak chip moved to the Diary day-header row — streaks count logging days, so they belong with the date. MUI `AppBar` with sticky positioning.
 - **Bottom nav (Phase 2):** three tabs — **Diary** · **Stats** · **Settings**. Add **Shop** in Phase 3, **Kal** in Phase 4. MUI `BottomNavigation`, clear active state.
 - **PWA shell:** installable, matching status-bar theme color, offline-safe diary page (last-logged data cached via Convex local cache + service worker).
 
@@ -368,6 +373,16 @@ Foodvisor- and Cronometer-inspired trend views. Each card supports a 7 / 30 / 90
 6. **Nutrient coverage** (stretch — wires up once AUSNUT micros are in the `foods` table) — Cronometer-style grid of daily % of RDI for the 20 key micros.
 
 All data via Convex queries — no `useEffect` polling (§3 conventions).
+
+### Settings page (Phase 2 — shipped 2026-04-25)
+
+Mobile-first, slim. Three cards stacked, no auth-info banner, no in-page dark-mode toggle (lives in the AppHeader), no unit toggle (Australian standard always: kg, cm, kcal).
+
+1. **Body Stats** — height (cm), weight (kg), age, sex, activity level (5 levels: sedentary → very_active). Commits on blur or select change. Stored on `useUserStore.bodyStats`.
+2. **Weight Goal** — Lose / Maintain / Gain / Recomp toggle, target weight (hidden when Maintain), target date (native `<input type="date">`). Helper text shows the implied weekly rate ("−0.11 kg/week — within safe range" or "clamped to a safe rate"). Stored on `useUserStore.goal`.
+3. **Daily Targets** — Calories, Protein, Carbs, Fat. Each is an `OverridableTarget`; auto-recompute on body-stat or goal change only touches non-overridden fields. Edited fields display the would-be auto value as a "Auto: 3000" caption. "Reset to auto" appears when any field is overridden, clears all flags + recomputes.
+
+There is no separate Auto-calc button — `setBodyStats` and `setGoal` already trigger `recalcTargets()` internally. The cards are reusable inside a future onboarding wizard (Phase 2 deliverable not yet shipped).
 
 ### Fast-log features (non-negotiable in Phase 2)
 
@@ -415,7 +430,8 @@ Each phase has a concrete **Done when** gate. No phase graduates without it.
 ### Phase 2 — Calorie tracker MVP (2 weeks)
 
 - **App shell:** top sticky AppHeader (Kal icon · title · dark-mode · avatar menu) + 3-tab BottomNav (Diary · Stats · Settings); PWA `manifest.json` + icon, installable on iOS/Android. See §7 "App chrome".
-- **Onboarding:** age, sex, height, weight, goal (lose / maintain / gain / recomp), activity level → auto-calc targets. User can override each.
+- **Profile & targets editing** (✅ shipped 2026-04-25): age, sex, height, weight, activity level, goal (lose / maintain / gain / recomp), target weight, target date → auto-calc calorie + macro targets via Mifflin-St Jeor + clamped goal-rate adjustment (§5). User overrides any value; per-field override flag preserved across recalcs. Lives in the Settings page (§7), persisted to localStorage via Zustand `kal-profile`. Drives Diary energy gauge + macro rings.
+- **Onboarding wizard:** wraps the same 3 cards in a first-run multi-step flow for users without a profile yet. Not yet shipped — Settings is the entry point until then.
 - **Diary page** (full layout in §7): day-nav header, streak chip, ECharts energy gauge, macro rings, 4 meal sections (breakfast / lunch / dinner / snack), exercise section, day-actions row.
 - **Add food flow:** search → pick → quantity (g + common portions dropdown) → log.
 - **Fast-log:** Recent, Copy Yesterday, Copy-from-any-day, Favorites, Meal Templates, Quick-Add.
@@ -574,12 +590,12 @@ interface AccessoryItem {
 
 ## 13. Next actions (right now)
 
-Phase 0 scaffold and the Phase 2 app-shell UI (Diary + Stats + Settings skeletons, mock data) shipped on 2026-04-24.
+Phase 0 scaffold and the Phase 2 app-shell UI (Diary + Stats + Settings skeletons, mock data) shipped on 2026-04-24. Profile + targets editing in Settings shipped on 2026-04-25 (Zustand-persisted; pending Convex migration).
 
-1. **Wire the Convex schema** for `users` extensions, `meal_logs`, `exercise_logs`, `weights`, `favorites`, `meal_templates`. Use `@convex-dev/migrations` (widen → migrate → narrow) per the `convex-migration-helper` skill.
-2. **Replace mock data with Convex queries.** Swap `src/lib/mockDiary.ts` → `api.meal_logs.getByDate` + `api.exercise_logs.getByDate`; swap `src/lib/mockStats.ts` → weight/calorie/macro/streak/exercise queries. UI already matches §6 shapes, so this is mostly a rename.
+1. **Wire the Convex schema** for `users` extensions, `meal_logs`, `exercise_logs`, `weights`, `favorites`, `meal_templates`. Use `@convex-dev/migrations` (widen → migrate → narrow) per the `convex-migration-helper` skill. Include a `users.upsertProfile` mutation that accepts the persisted `kal-profile` shape (1:1 with §6 field names) and a hydration step that drains localStorage on first authenticated load.
+2. **Replace mock data with Convex queries.** Swap `src/lib/mockDiary.ts` → `api.meal_logs.getByDate` + `api.exercise_logs.getByDate`; swap `src/lib/mockStats.ts` → weight/calorie/macro/streak/exercise queries. Swap `useUserStore` → `api.users.get` so targets propagate from Convex too. UI already matches §6 shapes, so this is mostly a rename.
 3. **Phase 1 food DB.** Download AUSNUT 2023 + AFCD from `data.gov.au`, write the ETL into `foods`, add the Open Food Facts barcode HTTP action. Admin spot-check query.
-4. **Phase 2 fill-in.** Onboarding (goals auto-calc), real food-search + add-food flow, barcode scanner wiring, weight quick-log, weekly-adjustment Convex cron, CSV export.
+4. **Phase 2 fill-in.** Onboarding wizard (wraps the 3 Settings cards into a first-run flow), real food-search + add-food flow, barcode scanner wiring, weight quick-log + `weights` table, weekly-adjustment Convex cron, CSV export.
 5. **Dogfood for 14 consecutive days** without switching back to Cronometer — the Phase 2 done-when gate.
 
 Pet and social come later. Logging is the whole game until it feels better than Cronometer.

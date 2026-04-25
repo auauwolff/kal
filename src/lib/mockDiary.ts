@@ -65,13 +65,6 @@ const makeMeal = (
 });
 
 export const getMockDiary = (date: string): DayDiary => {
-  const targets = {
-    calories: 2600,
-    proteinG: 165,
-    carbsG: 260,
-    fatG: 85,
-  };
-
   const meals: Record<MealType, MealLog[]> = {
     breakfast: [
       makeMeal(
@@ -163,5 +156,5 @@ export const getMockDiary = (date: string): DayDiary => {
       { calories: 0, proteinG: 0, carbsG: 0, fatG: 0 },
     );
 
-  return { date, targets, totals, meals, exercise };
+  return { date, totals, meals, exercise };
 };
