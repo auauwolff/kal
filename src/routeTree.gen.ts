@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as StatsRouteImport } from './routes/stats'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as KalRouteImport } from './routes/kal'
+import { Route as CallbackRouteImport } from './routes/callback'
 import { Route as IndexRouteImport } from './routes/index'
 
 const StatsRoute = StatsRouteImport.update({
@@ -29,6 +30,11 @@ const KalRoute = KalRouteImport.update({
   path: '/kal',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CallbackRoute = CallbackRouteImport.update({
+  id: '/callback',
+  path: '/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -37,12 +43,14 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/callback': typeof CallbackRoute
   '/kal': typeof KalRoute
   '/settings': typeof SettingsRoute
   '/stats': typeof StatsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/callback': typeof CallbackRoute
   '/kal': typeof KalRoute
   '/settings': typeof SettingsRoute
   '/stats': typeof StatsRoute
@@ -50,20 +58,22 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/callback': typeof CallbackRoute
   '/kal': typeof KalRoute
   '/settings': typeof SettingsRoute
   '/stats': typeof StatsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/kal' | '/settings' | '/stats'
+  fullPaths: '/' | '/callback' | '/kal' | '/settings' | '/stats'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/kal' | '/settings' | '/stats'
-  id: '__root__' | '/' | '/kal' | '/settings' | '/stats'
+  to: '/' | '/callback' | '/kal' | '/settings' | '/stats'
+  id: '__root__' | '/' | '/callback' | '/kal' | '/settings' | '/stats'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CallbackRoute: typeof CallbackRoute
   KalRoute: typeof KalRoute
   SettingsRoute: typeof SettingsRoute
   StatsRoute: typeof StatsRoute
@@ -92,6 +102,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof KalRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/callback': {
+      id: '/callback'
+      path: '/callback'
+      fullPath: '/callback'
+      preLoaderRoute: typeof CallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -104,6 +121,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CallbackRoute: CallbackRoute,
   KalRoute: KalRoute,
   SettingsRoute: SettingsRoute,
   StatsRoute: StatsRoute,
