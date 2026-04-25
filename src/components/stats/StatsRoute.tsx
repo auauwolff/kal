@@ -1,15 +1,15 @@
 import { Authenticated, Unauthenticated } from 'convex/react';
-import { ReportsPage } from '@/components/reports/ReportsPage';
+import { StatsPage } from '@/components/stats/StatsPage';
 import { SignedOutCard } from '@/components/SignedOutCard';
 
-export const ReportsRoute = () => (
+export const StatsRoute = () => (
   <>
     <Authenticated>
-      <ReportsPage />
+      <StatsPage />
     </Authenticated>
     <Unauthenticated>
       <SignedOutCard
-        title="Reports are for signed-in users."
+        title="Stats are for signed-in users."
         subtitle="Sign in to see your weight, calorie, and macro trends."
       />
     </Unauthenticated>

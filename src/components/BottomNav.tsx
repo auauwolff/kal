@@ -13,7 +13,7 @@ import { useNavigate, useRouterState } from '@tanstack/react-router';
 const navItems = [
   { label: 'Diary', icon: <DiaryIcon />, path: '/' },
   { label: 'Kal', icon: <KalIcon />, path: '/kal' },
-  { label: 'Stats', icon: <StatsIcon />, path: '/reports' },
+  { label: 'Stats', icon: <StatsIcon />, path: '/stats' },
 ];
 
 export const BottomNav = () => {

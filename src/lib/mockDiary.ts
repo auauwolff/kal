@@ -3,7 +3,7 @@ import type {
   ExerciseLog,
   MealLog,
   MealType,
-} from '@/types/diary';
+} from '@/components/diary/types';
 
 const makeMeal = (
   date: string,

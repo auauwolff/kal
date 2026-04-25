@@ -1,14 +1,10 @@
 import { Box, Typography, useTheme } from '@mui/material';
 import ReactECharts from 'echarts-for-react';
-import type { DailyTargets, DailyTotals } from '@/types/diary';
+import { useDiary } from './useDiary';
 
-interface EnergySummaryProps {
-  totals: DailyTotals;
-  targets: DailyTargets;
-}
-
-export const EnergySummary = ({ totals, targets }: EnergySummaryProps) => {
+export const EnergySummary = () => {
   const theme = useTheme();
+  const { totals, targets } = useDiary();
 
   const consumed = totals.calories;
   const target = targets.calories;

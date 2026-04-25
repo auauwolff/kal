@@ -11,16 +11,17 @@ import {
 } from '@mui/material';
 import { Add as AddIcon, MoreHoriz } from '@mui/icons-material';
 import toast from 'react-hot-toast';
-import type { MealLog, MealType } from '@/types/diary';
-import { MEAL_LABELS } from '@/types/diary';
+import type { MealType } from './types';
+import { MEAL_LABELS } from './types';
+import { useDiary } from './useDiary';
 
 interface MealSectionProps {
   mealType: MealType;
-  entries: MealLog[];
 }
 
-export const MealSection = ({ mealType, entries }: MealSectionProps) => {
+export const MealSection = ({ mealType }: MealSectionProps) => {
   const theme = useTheme();
+  const entries = useDiary().meals[mealType];
   const totals = entries.reduce(
     (acc, e) => ({
       calories: acc.calories + e.calories,

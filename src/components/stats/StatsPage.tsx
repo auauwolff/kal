@@ -6,15 +6,15 @@ import {
   ToggleButtonGroup,
   Typography,
 } from '@mui/material';
-import { WeightTrendCard } from '@/components/reports/WeightTrendCard';
-import { CalorieIntakeCard } from '@/components/reports/CalorieIntakeCard';
-import { MacroSplitCard } from '@/components/reports/MacroSplitCard';
-import { StreakHeatmapCard } from '@/components/reports/StreakHeatmapCard';
-import { ExerciseConsistencyCard } from '@/components/reports/ExerciseConsistencyCard';
-import type { ReportRange } from '@/lib/mockReports';
+import { WeightTrendCard } from '@/components/stats/WeightTrendCard';
+import { CalorieIntakeCard } from '@/components/stats/CalorieIntakeCard';
+import { MacroSplitCard } from '@/components/stats/MacroSplitCard';
+import { StreakHeatmapCard } from '@/components/stats/StreakHeatmapCard';
+import { ExerciseConsistencyCard } from '@/components/stats/ExerciseConsistencyCard';
+import type { StatsRange } from '@/lib/mockStats';
 
-export const ReportsPage = () => {
-  const [range, setRange] = useState<ReportRange>(30);
+export const StatsPage = () => {
+  const [range, setRange] = useState<StatsRange>(30);
 
   return (
     <Box sx={{ maxWidth: 720, mx: 'auto', width: '100%', p: { xs: 2, sm: 3 } }}>
@@ -24,7 +24,7 @@ export const ReportsPage = () => {
             value={range}
             exclusive
             size="small"
-            onChange={(_, v: ReportRange | null) => v && setRange(v)}
+            onChange={(_, v: StatsRange | null) => v && setRange(v)}
           >
             <ToggleButton value={7}>7d</ToggleButton>
             <ToggleButton value={30}>30d</ToggleButton>

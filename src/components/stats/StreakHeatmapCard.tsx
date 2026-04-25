@@ -1,9 +1,9 @@
 import { Card, CardContent, Stack, Typography, useTheme } from '@mui/material';
 import ReactECharts from 'echarts-for-react';
-import { getMockStreaks, type ReportRange } from '@/lib/mockReports';
+import { getMockStreaks, type StatsRange } from '@/lib/mockStats';
 
 interface StreakHeatmapCardProps {
-  range: ReportRange;
+  range: StatsRange;
 }
 
 export const StreakHeatmapCard = ({ range }: StreakHeatmapCardProps) => {

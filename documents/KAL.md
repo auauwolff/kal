@@ -9,8 +9,8 @@ This is the single canonical document for the Kal project. It supersedes `archiv
 ## Current status
 
 - ✅ **Phase 0 — Scaffold** (2026-04-24): Vite + React 19 + MUI + Zustand + TanStack Router + Convex + WorkOS AuthKit + `vite-plugin-pwa` all wired. Installs to phone via `public/manifest.json`.
-- ✅ **Phase 2 — App shell** (2026-04-24): sticky AppHeader (Kal icon · title · dark-mode · avatar menu) + 3-tab BottomNav (Diary · Reports · Settings). Diary and Reports rendered with **mock data** in shapes matching §6.
-- ⏭️ **Next:** Convex schema + real queries — widen `convex/schema.ts` to cover `users` extensions, `meal_logs`, `exercise_logs`, `weights`, `favorites`, `meal_templates` via `@convex-dev/migrations`; then replace `src/lib/mockDiary.ts` + `src/lib/mockReports.ts` with Convex queries. After that: Phase 1 AUSNUT ETL → real food DB → real add-food flow.
+- ✅ **Phase 2 — App shell** (2026-04-24): sticky AppHeader (Kal icon · title · dark-mode · avatar menu) + 3-tab BottomNav (Diary · Stats · Settings). Diary and Stats rendered with **mock data** in shapes matching §6.
+- ⏭️ **Next:** Convex schema + real queries — widen `convex/schema.ts` to cover `users` extensions, `meal_logs`, `exercise_logs`, `weights`, `favorites`, `meal_templates` via `@convex-dev/migrations`; then replace `src/lib/mockDiary.ts` + `src/lib/mockStats.ts` with Convex queries. After that: Phase 1 AUSNUT ETL → real food DB → real add-food flow.
 
 ---
 
@@ -289,7 +289,7 @@ Users don't need absolute accuracy — they need consistent-enough tracking for 
 
 **Indexes:** `by_user_date`.
 
-Exercise is logged here but **never added to the calorie budget** (Design Principle §2.6). Feeds pet `strength` / `vitality` in Phase 4 and Reports consistency charts in Phase 2.
+Exercise is logged here but **never added to the calorie budget** (Design Principle §2.6). Feeds pet `strength` / `vitality` in Phase 4 and Stats consistency charts in Phase 2.
 
 ### `meal_templates` (Phase 2)
 
@@ -328,12 +328,12 @@ All schema changes after Phase 1 use the **widen → migrate → narrow** workfl
 
 ## 7. App UX — the make-or-break
 
-The logging loop is the whole game. Everything here is Phase 2 unless marked otherwise. Layout references: `petrol-saver` for the top bar + bottom nav pattern, Cronometer for meal grouping, Foodvisor for Reports-style graphs.
+The logging loop is the whole game. Everything here is Phase 2 unless marked otherwise. Layout references: `petrol-saver` for the top bar + bottom nav pattern, Cronometer for meal grouping, Foodvisor for Stats-style graphs.
 
 ### App chrome
 
 - **Top app bar:** user avatar (left, opens a profile/settings menu), screen title in the middle, gem balance chip on the right (hidden in Phase 2, appears in Phase 3). MUI `AppBar` with sticky positioning.
-- **Bottom nav (Phase 2):** three tabs — **Diary** · **Reports** · **Settings**. Add **Shop** in Phase 3, **Kal** in Phase 4. MUI `BottomNavigation`, clear active state.
+- **Bottom nav (Phase 2):** three tabs — **Diary** · **Stats** · **Settings**. Add **Shop** in Phase 3, **Kal** in Phase 4. MUI `BottomNavigation`, clear active state.
 - **PWA shell:** installable, matching status-bar theme color, offline-safe diary page (last-logged data cached via Convex local cache + service worker).
 
 ### Diary page (top to bottom)
@@ -352,10 +352,10 @@ Backed by the `exercise_logs` table (see §6). Types: `strength` · `cardio` · 
 
 **Exercise NEVER adds to the calorie budget.** Design Principle §2.6 is load-bearing here — exercise calorie estimates are ±30–50% accurate and breaking this rule causes the plateaus that sink MFP users. What exercise *does*:
 - Feeds the pet's `strength` and `vitality` stats in Phase 4.
-- Shows up in Reports as a weekly consistency chart (Phase 2).
+- Shows up in Stats as a weekly consistency chart (Phase 2).
 - Powers Phase 3 missions ("hit 3 strength sessions this week → gems").
 
-### Reports page (Phase 2)
+### Stats page (Phase 2)
 
 Foodvisor- and Cronometer-inspired trend views. Each card supports a 7 / 30 / 90-day toggle; charts via ECharts.
 
@@ -413,15 +413,15 @@ Each phase has a concrete **Done when** gate. No phase graduates without it.
 
 ### Phase 2 — Calorie tracker MVP (2 weeks)
 
-- **App shell:** top sticky AppHeader (Kal icon · title · dark-mode · avatar menu) + 3-tab BottomNav (Diary · Reports · Settings); PWA `manifest.json` + icon, installable on iOS/Android. See §7 "App chrome".
+- **App shell:** top sticky AppHeader (Kal icon · title · dark-mode · avatar menu) + 3-tab BottomNav (Diary · Stats · Settings); PWA `manifest.json` + icon, installable on iOS/Android. See §7 "App chrome".
 - **Onboarding:** age, sex, height, weight, goal (lose / maintain / gain / recomp), activity level → auto-calc targets. User can override each.
 - **Diary page** (full layout in §7): day-nav header, streak chip, ECharts energy gauge, macro rings, 4 meal sections (breakfast / lunch / dinner / snack), exercise section, day-actions row.
 - **Add food flow:** search → pick → quantity (g + common portions dropdown) → log.
 - **Fast-log:** Recent, Copy Yesterday, Copy-from-any-day, Favorites, Meal Templates, Quick-Add.
 - **Barcode scan** via html5-qrcode, local-first then Open Food Facts fallback.
 - **Exercise log:** add-entry flow (type + duration + intensity); no calorie credit, ever.
-- **Weight tracking:** quick-log page + integration into the Reports Weight card.
-- **Reports page** (full layout in §7): weight trend · calorie intake · macro split · streak heatmap · exercise consistency. 7 / 30 / 90-day toggle.
+- **Weight tracking:** quick-log page + integration into the Stats Weight card.
+- **Stats page** (full layout in §7): weight trend · calorie intake · macro split · streak heatmap · exercise consistency. 7 / 30 / 90-day toggle.
 - **Weekly adjustment** running as a Convex cron (Sunday 02:00 AEST).
 - **Export** raw data as CSV (personal safety net).
 
@@ -573,10 +573,10 @@ interface AccessoryItem {
 
 ## 13. Next actions (right now)
 
-Phase 0 scaffold and the Phase 2 app-shell UI (Diary + Reports + Settings skeletons, mock data) shipped on 2026-04-24.
+Phase 0 scaffold and the Phase 2 app-shell UI (Diary + Stats + Settings skeletons, mock data) shipped on 2026-04-24.
 
 1. **Wire the Convex schema** for `users` extensions, `meal_logs`, `exercise_logs`, `weights`, `favorites`, `meal_templates`. Use `@convex-dev/migrations` (widen → migrate → narrow) per the `convex-migration-helper` skill.
-2. **Replace mock data with Convex queries.** Swap `src/lib/mockDiary.ts` → `api.meal_logs.getByDate` + `api.exercise_logs.getByDate`; swap `src/lib/mockReports.ts` → weight/calorie/macro/streak/exercise queries. UI already matches §6 shapes, so this is mostly a rename.
+2. **Replace mock data with Convex queries.** Swap `src/lib/mockDiary.ts` → `api.meal_logs.getByDate` + `api.exercise_logs.getByDate`; swap `src/lib/mockStats.ts` → weight/calorie/macro/streak/exercise queries. UI already matches §6 shapes, so this is mostly a rename.
 3. **Phase 1 food DB.** Download AUSNUT 2023 + AFCD from `data.gov.au`, write the ETL into `foods`, add the Open Food Facts barcode HTTP action. Admin spot-check query.
 4. **Phase 2 fill-in.** Onboarding (goals auto-calc), real food-search + add-food flow, barcode scanner wiring, weight quick-log, weekly-adjustment Convex cron, CSV export.
 5. **Dogfood for 14 consecutive days** without switching back to Cronometer — the Phase 2 done-when gate.

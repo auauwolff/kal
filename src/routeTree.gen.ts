@@ -9,19 +9,19 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as StatsRouteImport } from './routes/stats'
 import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as KalRouteImport } from './routes/kal'
 import { Route as IndexRouteImport } from './routes/index'
 
+const StatsRoute = StatsRouteImport.update({
+  id: '/stats',
+  path: '/stats',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ReportsRoute = ReportsRouteImport.update({
-  id: '/reports',
-  path: '/reports',
   getParentRoute: () => rootRouteImport,
 } as any)
 const KalRoute = KalRouteImport.update({
@@ -38,51 +38,51 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/kal': typeof KalRoute
-  '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
+  '/stats': typeof StatsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/kal': typeof KalRoute
-  '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
+  '/stats': typeof StatsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/kal': typeof KalRoute
-  '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
+  '/stats': typeof StatsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/kal' | '/reports' | '/settings'
+  fullPaths: '/' | '/kal' | '/settings' | '/stats'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/kal' | '/reports' | '/settings'
-  id: '__root__' | '/' | '/kal' | '/reports' | '/settings'
+  to: '/' | '/kal' | '/settings' | '/stats'
+  id: '__root__' | '/' | '/kal' | '/settings' | '/stats'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   KalRoute: typeof KalRoute
-  ReportsRoute: typeof ReportsRoute
   SettingsRoute: typeof SettingsRoute
+  StatsRoute: typeof StatsRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/stats': {
+      id: '/stats'
+      path: '/stats'
+      fullPath: '/stats'
+      preLoaderRoute: typeof StatsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reports': {
-      id: '/reports'
-      path: '/reports'
-      fullPath: '/reports'
-      preLoaderRoute: typeof ReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/kal': {
@@ -105,8 +105,8 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   KalRoute: KalRoute,
-  ReportsRoute: ReportsRoute,
   SettingsRoute: SettingsRoute,
+  StatsRoute: StatsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

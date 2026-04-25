@@ -18,8 +18,9 @@ import {
   Bolt,
 } from '@mui/icons-material';
 import toast from 'react-hot-toast';
-import type { ExerciseLog, ExerciseType } from '@/types/diary';
-import { EXERCISE_LABELS } from '@/types/diary';
+import type { ExerciseType } from './types';
+import { EXERCISE_LABELS } from './types';
+import { useDiary } from './useDiary';
 
 const iconByType: Record<ExerciseType, React.ReactElement> = {
   strength: <FitnessCenter fontSize="small" />,
@@ -29,11 +30,8 @@ const iconByType: Record<ExerciseType, React.ReactElement> = {
   other: <Bolt fontSize="small" />,
 };
 
-interface ExerciseSectionProps {
-  entries: ExerciseLog[];
-}
-
-export const ExerciseSection = ({ entries }: ExerciseSectionProps) => {
+export const ExerciseSection = () => {
+  const entries = useDiary().exercise;
   const totalMin = entries.reduce((acc, e) => acc + e.durationMin, 0);
 
   const handleAdd = () => {

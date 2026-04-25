@@ -1,9 +1,9 @@
 import { Card, CardContent, Stack, Typography, useTheme } from '@mui/material';
 import ReactECharts from 'echarts-for-react';
-import { getMockCalories, type ReportRange } from '@/lib/mockReports';
+import { getMockCalories, type StatsRange } from '@/lib/mockStats';
 
 interface CalorieIntakeCardProps {
-  range: ReportRange;
+  range: StatsRange;
 }
 
 export const CalorieIntakeCard = ({ range }: CalorieIntakeCardProps) => {

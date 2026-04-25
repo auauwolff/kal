@@ -1,10 +1,10 @@
 import { Card, CardContent, Stack, Typography, useTheme } from '@mui/material';
 import ReactECharts from 'echarts-for-react';
-import { getMockExercise, type ReportRange } from '@/lib/mockReports';
-import { EXERCISE_LABELS, type ExerciseType } from '@/types/diary';
+import { getMockExercise, type StatsRange } from '@/lib/mockStats';
+import { EXERCISE_LABELS, type ExerciseType } from '@/components/diary/types';
 
 interface ExerciseConsistencyCardProps {
-  range: ReportRange;
+  range: StatsRange;
 }
 
 const TYPES: ExerciseType[] = ['strength', 'cardio', 'sports', 'walk', 'other'];

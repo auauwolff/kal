@@ -1,9 +1,9 @@
 import { Card, CardContent, Stack, Typography, useTheme } from '@mui/material';
 import ReactECharts from 'echarts-for-react';
-import { getMockMacros, type ReportRange } from '@/lib/mockReports';
+import { getMockMacros, type StatsRange } from '@/lib/mockStats';
 
 interface MacroSplitCardProps {
-  range: ReportRange;
+  range: StatsRange;
 }
 
 export const MacroSplitCard = ({ range }: MacroSplitCardProps) => {

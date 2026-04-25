@@ -1,6 +1,6 @@
-import type { ExerciseType } from '@/types/diary';
+import type { ExerciseType } from '@/components/diary/types';
 
-export type ReportRange = 7 | 30 | 90;
+export type StatsRange = 7 | 30 | 90;
 
 const toISO = (d: Date) => {
   const year = d.getFullYear();
@@ -9,7 +9,7 @@ const toISO = (d: Date) => {
   return `${year}-${month}-${day}`;
 };
 
-const daysBack = (range: ReportRange) => {
+const daysBack = (range: StatsRange) => {
   const out: string[] = [];
   const today = new Date();
   for (let i = range - 1; i >= 0; i -= 1) {
@@ -34,7 +34,7 @@ export interface WeightPoint {
   weightKg: number;
 }
 
-export const getMockWeights = (range: ReportRange): WeightPoint[] => {
+export const getMockWeights = (range: StatsRange): WeightPoint[] => {
   const rnd = prng(42);
   const dates = daysBack(range);
   let weight = 82;
@@ -50,7 +50,7 @@ export interface CaloriePoint {
   target: number;
 }
 
-export const getMockCalories = (range: ReportRange): CaloriePoint[] => {
+export const getMockCalories = (range: StatsRange): CaloriePoint[] => {
   const rnd = prng(1337);
   return daysBack(range).map((date) => ({
     date,
@@ -66,7 +66,7 @@ export interface MacroPoint {
   fatG: number;
 }
 
-export const getMockMacros = (range: ReportRange): MacroPoint[] => {
+export const getMockMacros = (range: StatsRange): MacroPoint[] => {
   const rnd = prng(99);
   return daysBack(range).map((date) => ({
     date,
@@ -81,7 +81,7 @@ export interface StreakPoint {
   status: 0 | 1 | 2 | 3; // 0 = miss, 1 = logged, 2 = hit target, 3 = perfect
 }
 
-export const getMockStreaks = (range: ReportRange): StreakPoint[] => {
+export const getMockStreaks = (range: StatsRange): StreakPoint[] => {
   const rnd = prng(7);
   return daysBack(range).map((date) => {
     const r = rnd();
@@ -96,7 +96,7 @@ export interface ExerciseWeek {
   minutes: Record<ExerciseType, number>;
 }
 
-const weeksBack = (range: ReportRange): { start: string; label: string }[] => {
+const weeksBack = (range: StatsRange): { start: string; label: string }[] => {
   const count = range <= 7 ? 4 : range <= 30 ? 6 : 13;
   const out: { start: string; label: string }[] = [];
   const today = new Date();
@@ -111,7 +111,7 @@ const weeksBack = (range: ReportRange): { start: string; label: string }[] => {
   return out;
 };
 
-export const getMockExercise = (range: ReportRange): ExerciseWeek[] => {
+export const getMockExercise = (range: StatsRange): ExerciseWeek[] => {
   const rnd = prng(311);
   return weeksBack(range).map((w) => ({
     weekLabel: w.label,

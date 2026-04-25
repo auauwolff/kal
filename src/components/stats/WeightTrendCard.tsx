@@ -1,9 +1,9 @@
 import { Card, CardContent, Stack, Typography, useTheme } from '@mui/material';
 import ReactECharts from 'echarts-for-react';
-import { getMockWeights, type ReportRange } from '@/lib/mockReports';
+import { getMockWeights, type StatsRange } from '@/lib/mockStats';
 
 interface WeightTrendCardProps {
-  range: ReportRange;
+  range: StatsRange;
 }
 
 const rollingMean = (values: number[], window: number) =>

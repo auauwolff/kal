@@ -1,5 +1,5 @@
 import { Box, Stack, Typography, useTheme } from '@mui/material';
-import type { DailyTargets, DailyTotals } from '@/types/diary';
+import { useDiary } from './useDiary';
 
 interface RingProps {
   label: string;
@@ -69,13 +69,9 @@ const Ring = ({ label, current, target, unit, color }: RingProps) => {
   );
 };
 
-interface MacroRingsProps {
-  totals: DailyTotals;
-  targets: DailyTargets;
-}
-
-export const MacroRings = ({ totals, targets }: MacroRingsProps) => {
+export const MacroRings = () => {
   const theme = useTheme();
+  const { totals, targets } = useDiary();
 
   return (
     <Stack
