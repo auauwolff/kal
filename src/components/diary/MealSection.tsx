@@ -1,3 +1,4 @@
+import { useState, type ReactNode } from 'react';
 import {
   Box,
   Button,
@@ -5,23 +6,114 @@ import {
   CardContent,
   Divider,
   IconButton,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem,
   Stack,
   Typography,
   useTheme,
 } from '@mui/material';
-import { Add as AddIcon, MoreHoriz } from '@mui/icons-material';
+import {
+  Add as AddIcon,
+  BreakfastDining,
+  Cookie,
+  DeleteOutline,
+  DinnerDining,
+  LunchDining,
+  MoreVert,
+} from '@mui/icons-material';
 import toast from 'react-hot-toast';
-import type { MealType } from './types';
-import { MEAL_LABELS } from './types';
+import type { MealLog, MealType } from './types';
+import { MEAL_LABELS, MEAL_TYPES } from './types';
 import { useDiary } from './useDiary';
 
 interface MealSectionProps {
   mealType: MealType;
 }
 
+const MEAL_ICONS: Record<MealType, ReactNode> = {
+  breakfast: <BreakfastDining fontSize="small" sx={{ color: 'secondary.main' }} />,
+  lunch: <LunchDining fontSize="small" sx={{ color: 'secondary.main' }} />,
+  dinner: <DinnerDining fontSize="small" sx={{ color: 'secondary.main' }} />,
+  snack: <Cookie fontSize="small" sx={{ color: 'secondary.main' }} />,
+};
+
+interface EntryRowProps {
+  entry: MealLog;
+  onMove: (to: MealType) => void;
+  onDelete: () => void;
+}
+
+const EntryRow = ({ entry, onMove, onDelete }: EntryRowProps) => {
+  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
+  const menuOpen = Boolean(menuAnchor);
+  const openMenu = (e: React.MouseEvent<HTMLElement>) => setMenuAnchor(e.currentTarget);
+  const closeMenu = () => setMenuAnchor(null);
+
+  const handleMove = (to: MealType) => {
+    closeMenu();
+    onMove(to);
+  };
+  const handleDelete = () => {
+    closeMenu();
+    onDelete();
+  };
+
+  const otherMealTypes = MEAL_TYPES.filter((t) => t !== entry.mealType);
+
+  return (
+    <Stack direction="row" sx={{ alignItems: 'center', gap: 1 }}>
+      <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+        <Typography variant="body2" noWrap sx={{ fontWeight: 500 }}>
+          {entry.foodName}
+          {entry.brand && (
+            <Box
+              component="span"
+              sx={{ color: 'text.secondary', fontWeight: 400 }}
+            >
+              {' '}· {entry.brand}
+            </Box>
+          )}
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          {entry.servingLabel ?? `${entry.quantityG} g`} ·{' '}
+          {Math.round(entry.calories)} kcal
+        </Typography>
+      </Box>
+      <IconButton size="small" edge="end" onClick={openMenu}>
+        <MoreVert fontSize="small" />
+      </IconButton>
+      <Menu
+        anchorEl={menuAnchor}
+        open={menuOpen}
+        onClose={closeMenu}
+        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+        slotProps={{ paper: { sx: { minWidth: 200 } } }}
+      >
+        {otherMealTypes.map((to) => (
+          <MenuItem key={to} onClick={() => handleMove(to)}>
+            <ListItemIcon>{MEAL_ICONS[to]}</ListItemIcon>
+            <ListItemText>Move to {MEAL_LABELS[to]}</ListItemText>
+          </MenuItem>
+        ))}
+        <Divider />
+        <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
+          <ListItemIcon>
+            <DeleteOutline fontSize="small" sx={{ color: 'error.main' }} />
+          </ListItemIcon>
+          <ListItemText>Delete</ListItemText>
+        </MenuItem>
+      </Menu>
+    </Stack>
+  );
+};
+
 export const MealSection = ({ mealType }: MealSectionProps) => {
   const theme = useTheme();
-  const entries = useDiary().meals[mealType];
+  const { meals, moveEntry, deleteEntry } = useDiary();
+  const entries = meals[mealType];
   const totals = entries.reduce(
     (acc, e) => ({
       calories: acc.calories + e.calories,
@@ -73,32 +165,18 @@ export const MealSection = ({ mealType }: MealSectionProps) => {
 
         <Stack sx={{ gap: 1 }}>
           {entries.map((entry) => (
-            <Stack
+            <EntryRow
               key={entry.id}
-              direction="row"
-              sx={{ alignItems: 'center', gap: 1 }}
-            >
-              <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                <Typography variant="body2" noWrap sx={{ fontWeight: 500 }}>
-                  {entry.foodName}
-                  {entry.brand && (
-                    <Box
-                      component="span"
-                      sx={{ color: 'text.secondary', fontWeight: 400 }}
-                    >
-                      {' '}· {entry.brand}
-                    </Box>
-                  )}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {entry.servingLabel ?? `${entry.quantityG} g`} ·{' '}
-                  {Math.round(entry.calories)} kcal
-                </Typography>
-              </Box>
-              <IconButton size="small" edge="end">
-                <MoreHoriz fontSize="small" />
-              </IconButton>
-            </Stack>
+              entry={entry}
+              onMove={(to) => {
+                moveEntry(entry.id, to);
+                toast(`Moved to ${MEAL_LABELS[to]}`, { icon: '🍽️' });
+              }}
+              onDelete={() => {
+                deleteEntry(entry.id);
+                toast(`Deleted ${entry.foodName}`, { icon: '🗑️' });
+              }}
+            />
           ))}
 
           {entries.length === 0 && (

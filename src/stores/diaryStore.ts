@@ -1,4 +1,7 @@
 import { create } from 'zustand';
+import { getMockDiary } from '@/lib/mockDiary';
+import type { DayDiary, MealLog, MealType } from '@/components/diary/types';
+import { MEAL_TYPES } from '@/components/diary/types';
 
 const toISO = (d: Date) => {
   const year = d.getFullYear();
@@ -13,20 +16,105 @@ const shift = (iso: string, days: number) => {
   return toISO(d);
 };
 
+const recomputeTotals = (day: DayDiary): DayDiary => {
+  const totals = Object.values(day.meals)
+    .flat()
+    .reduce(
+      (acc, m) => ({
+        calories: acc.calories + m.calories,
+        proteinG: acc.proteinG + m.proteinG,
+        carbsG: acc.carbsG + m.carbsG,
+        fatG: acc.fatG + m.fatG,
+      }),
+      { calories: 0, proteinG: 0, carbsG: 0, fatG: 0 },
+    );
+  return { ...day, totals };
+};
+
+const seedDay = (
+  days: Record<string, DayDiary>,
+  iso: string,
+): Record<string, DayDiary> =>
+  days[iso] ? days : { ...days, [iso]: getMockDiary(iso) };
+
+const findAndRemove = (
+  meals: Record<MealType, MealLog[]>,
+  entryId: string,
+): { meals: Record<MealType, MealLog[]>; removed?: MealLog } => {
+  const next: Record<MealType, MealLog[]> = {
+    breakfast: meals.breakfast,
+    lunch: meals.lunch,
+    dinner: meals.dinner,
+    snack: meals.snack,
+  };
+  for (const type of MEAL_TYPES) {
+    const idx = next[type].findIndex((e) => e.id === entryId);
+    if (idx !== -1) {
+      const removed = next[type][idx];
+      next[type] = [...next[type].slice(0, idx), ...next[type].slice(idx + 1)];
+      return { meals: next, removed };
+    }
+  }
+  return { meals: next };
+};
+
 interface DiaryStore {
   selectedDate: string;
+  days: Record<string, DayDiary>;
   setDate: (iso: string) => void;
   goPrevDay: () => void;
   goNextDay: () => void;
   goToday: () => void;
+  moveEntry: (entryId: string, to: MealType) => void;
+  deleteEntry: (entryId: string) => void;
 }
 
+const todayISO = toISO(new Date());
+
 export const useDiaryStore = create<DiaryStore>()((set) => ({
-  selectedDate: toISO(new Date()),
-  setDate: (iso) => set({ selectedDate: iso }),
-  goPrevDay: () => set((s) => ({ selectedDate: shift(s.selectedDate, -1) })),
-  goNextDay: () => set((s) => ({ selectedDate: shift(s.selectedDate, 1) })),
-  goToday: () => set({ selectedDate: toISO(new Date()) }),
+  selectedDate: todayISO,
+  days: { [todayISO]: getMockDiary(todayISO) },
+  setDate: (iso) =>
+    set((s) => ({ selectedDate: iso, days: seedDay(s.days, iso) })),
+  goPrevDay: () =>
+    set((s) => {
+      const iso = shift(s.selectedDate, -1);
+      return { selectedDate: iso, days: seedDay(s.days, iso) };
+    }),
+  goNextDay: () =>
+    set((s) => {
+      const iso = shift(s.selectedDate, 1);
+      return { selectedDate: iso, days: seedDay(s.days, iso) };
+    }),
+  goToday: () =>
+    set((s) => {
+      const iso = toISO(new Date());
+      return { selectedDate: iso, days: seedDay(s.days, iso) };
+    }),
+  moveEntry: (entryId, to) =>
+    set((s) => {
+      const iso = s.selectedDate;
+      const day = s.days[iso];
+      if (!day) return s;
+      const { meals, removed } = findAndRemove(day.meals, entryId);
+      if (!removed || removed.mealType === to) return s;
+      const moved: MealLog = { ...removed, mealType: to };
+      meals[to] = [...meals[to], moved].sort((a, b) => a.loggedAt - b.loggedAt);
+      return {
+        days: { ...s.days, [iso]: recomputeTotals({ ...day, meals }) },
+      };
+    }),
+  deleteEntry: (entryId) =>
+    set((s) => {
+      const iso = s.selectedDate;
+      const day = s.days[iso];
+      if (!day) return s;
+      const { meals, removed } = findAndRemove(day.meals, entryId);
+      if (!removed) return s;
+      return {
+        days: { ...s.days, [iso]: recomputeTotals({ ...day, meals }) },
+      };
+    }),
 }));
 
 export const getTodayISO = () => toISO(new Date());
