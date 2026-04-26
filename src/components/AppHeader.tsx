@@ -22,12 +22,14 @@ import {
   Settings as SettingsIcon,
 } from '@mui/icons-material';
 import { useAuth } from '@workos-inc/authkit-react';
+import { useMutation, useQuery } from 'convex/react';
 import { useNavigate } from '@tanstack/react-router';
 import { useWebHaptics } from 'web-haptics/react';
 import { DarkModeToggle } from '@/components/DarkModeToggle';
 import { useParticles } from '@/components/ParticlesProvider';
 import { playGemSound } from '@/lib/gemSound';
 import { useGemsStore } from '@/stores/gemsStore';
+import { api } from '../../convex/_generated/api';
 import { GEM_EMOJIS, gemParticleCount, userInitials } from './appHeaderUtils';
 
 const shake = keyframes`
@@ -50,7 +52,33 @@ export const AppHeader = () => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(anchorEl);
 
+  const convexUser = useQuery(api.users.get, {});
+  const backfillMyGems = useMutation(api.users.backfillMyGems);
   const balance = useGemsStore((s) => s.balance);
+  const setGemBalance = useGemsStore((s) => s.setBalance);
+  const serverUserId = convexUser?._id;
+  const serverGemBalance = convexUser?.gemBalance;
+  const gemBalanceBackfilledAt = convexUser?.gemBalanceBackfilledAt;
+  const backfillRequestRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (convexUser === undefined) return;
+    setGemBalance(serverGemBalance ?? 0);
+  }, [convexUser, serverGemBalance, setGemBalance]);
+
+  useEffect(() => {
+    if (!serverUserId) {
+      backfillRequestRef.current = null;
+      return;
+    }
+    if (gemBalanceBackfilledAt) return;
+    if (backfillRequestRef.current === serverUserId) return;
+
+    backfillRequestRef.current = serverUserId;
+    void backfillMyGems().catch(() => {
+      backfillRequestRef.current = null;
+    });
+  }, [backfillMyGems, gemBalanceBackfilledAt, serverUserId]);
 
   const { trigger } = useWebHaptics();
   const triggerRef = useRef(trigger);
@@ -92,20 +120,36 @@ export const AppHeader = () => {
       } catch {
         // Vibration API unsupported — silent fallback.
       }
-      if (reduceMotionRef.current) return;
+      const shouldReduceMotion = reduceMotionRef.current;
 
-      // Chip self-animation
+      // Chip self-animation. Keep this even in reduced-motion mode so mobile/PWA
+      // users still get visible feedback instead of vibration only.
       setAnimKey((k) => k + 1);
 
       // Center-pop → free scatter → fly to the counter, buzzing along the way.
       // Particle count scales with amount so a +1 nudge feels different from
-      // a +50 reward.
+      // a +50 reward. In reduced-motion mode, use a tiny sparkle near the chip
+      // instead of the full-screen flight.
       const rect = chipRef.current?.getBoundingClientRect();
       const targetX = rect ? rect.left + rect.width / 2 : 32;
       const targetY = rect ? rect.top + rect.height / 2 : 32;
-      const originX = window.innerWidth / 2;
-      const originY = window.innerHeight / 2;
       const amount = gemParticleCount(state.lastAddedAmount);
+
+      if (shouldReduceMotion) {
+        createHomingRef.current(
+          targetX,
+          targetY + 24,
+          targetX,
+          targetY,
+          GEM_EMOJIS,
+          Math.min(amount, 6),
+        );
+        return;
+      }
+
+      const viewport = window.visualViewport;
+      const originX = (viewport?.width ?? window.innerWidth) / 2;
+      const originY = (viewport?.height ?? window.innerHeight) / 2;
       createHomingRef.current(
         originX,
         originY,

@@ -1,6 +1,7 @@
 import { v } from 'convex/values';
 import { mutation, query } from './_generated/server';
-import { ensureAuthUser, getAuthUserOrNull } from './lib/auth';
+import { ensureAuthUser, getAuthUserOrNull, requireAuth } from './lib/auth';
+import { GEMS_PER_LOG } from './lib/rewards';
 import {
   bodyStatsValidator,
   userTargetsValidator,
@@ -11,6 +12,29 @@ export const get = query({
   args: {},
   handler: async (ctx) => {
     return await getAuthUserOrNull(ctx);
+  },
+});
+
+export const backfillMyGems = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await requireAuth(ctx);
+    if (user.gemBalanceBackfilledAt) return user.gemBalance;
+
+    const logs = await ctx.db
+      .query('meal_logs')
+      .withIndex('by_userId_and_loggedAt', (q) => q.eq('userId', user._id))
+      .take(1000);
+    const backfilledBalance = logs.length * GEMS_PER_LOG;
+    const gemBalance = Math.max(user.gemBalance, backfilledBalance);
+
+    await ctx.db.patch(user._id, {
+      gemBalance,
+      gemBalanceBackfilledAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    return gemBalance;
   },
 });
 

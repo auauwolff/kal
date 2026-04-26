@@ -51,7 +51,7 @@ export const getEmojiCanvas = (emoji: string): HTMLCanvasElement => {
   if (!c2d) return offscreen;
   c2d.textAlign = 'center';
   c2d.textBaseline = 'middle';
-  c2d.font = `${fontSize}px serif`;
+  c2d.font = `${fontSize}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", system-ui, sans-serif`;
   c2d.fillText(emoji, size / 2, size / 2);
 
   emojiCache.set(emoji, offscreen);
@@ -145,8 +145,9 @@ export const resolveCollisions = (particles: Particle[]) => {
 
 export const resizeCanvas = (canvas: HTMLCanvasElement) => {
   const dpr = maxParticleDpr();
-  const width = window.innerWidth;
-  const height = window.innerHeight;
+  const viewport = window.visualViewport;
+  const width = Math.round(viewport?.width ?? window.innerWidth);
+  const height = Math.round(viewport?.height ?? window.innerHeight);
   const targetW = Math.round(width * dpr);
   const targetH = Math.round(height * dpr);
 

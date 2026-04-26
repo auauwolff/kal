@@ -2,6 +2,7 @@ import { v } from 'convex/values';
 import { mutation, query, type MutationCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
 import { ensureAuthUser, getAuthUserOrNull, requireAuth } from './lib/auth';
+import { awardGems, GEMS_PER_LOG } from './lib/rewards';
 import { recomputeAndPatchStreak } from './lib/streaks';
 import { mealTypeValidator } from './validators';
 
@@ -221,6 +222,7 @@ export const add = mutation({
 
     await recomputeAndPatchDaySnapshot(ctx, user._id, date);
     await recomputeAndPatchStreak(ctx, user._id);
+    await awardGems(ctx, user._id, GEMS_PER_LOG);
     return logId;
   },
 });
@@ -254,6 +256,7 @@ export const relog = mutation({
 
     await recomputeAndPatchDaySnapshot(ctx, user._id, date);
     await recomputeAndPatchStreak(ctx, user._id);
+    await awardGems(ctx, user._id, GEMS_PER_LOG);
     return logId;
   },
 });

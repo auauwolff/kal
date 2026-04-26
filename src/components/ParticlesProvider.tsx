@@ -9,6 +9,7 @@ import {
   useRef,
   type ReactNode,
 } from 'react';
+import { createPortal } from 'react-dom';
 import {
   getEmojiCanvas,
   maxParticleDpr,
@@ -63,6 +64,8 @@ export const ParticlesProvider = ({ children }: { children: ReactNode }) => {
     const canvas = canvasRef.current;
     const c2d = ctxRef.current;
     if (!canvas || !c2d) return;
+
+    resizeCanvas(canvas);
 
     const frame = () => {
       const dpr = maxParticleDpr();
@@ -129,7 +132,10 @@ export const ParticlesProvider = ({ children }: { children: ReactNode }) => {
     resizeCanvas(canvas);
 
     const onResize = () => resizeCanvas(canvas);
+    const visualViewport = window.visualViewport;
     window.addEventListener('resize', onResize);
+    visualViewport?.addEventListener('resize', onResize);
+    visualViewport?.addEventListener('scroll', onResize);
 
     return () => {
       if (rafIdRef.current !== null) {
@@ -137,6 +143,8 @@ export const ParticlesProvider = ({ children }: { children: ReactNode }) => {
         rafIdRef.current = null;
       }
       window.removeEventListener('resize', onResize);
+      visualViewport?.removeEventListener('resize', onResize);
+      visualViewport?.removeEventListener('scroll', onResize);
     };
   }, []);
 
@@ -150,6 +158,8 @@ export const ParticlesProvider = ({ children }: { children: ReactNode }) => {
       gy = -1.5,
     ) => {
       const particles = particlesRef.current;
+      const canvas = canvasRef.current;
+      if (canvas) resizeCanvas(canvas);
       spawnBurst(particles, x, y, emojis, gx, gy);
       startLoop();
 
@@ -176,6 +186,8 @@ export const ParticlesProvider = ({ children }: { children: ReactNode }) => {
       emojis: EmojiOption[],
       amount = 16,
     ) => {
+      const canvas = canvasRef.current;
+      if (canvas) resizeCanvas(canvas);
       spawnHomingBurst(
         particlesRef.current,
         originX,
@@ -191,19 +203,24 @@ export const ParticlesProvider = ({ children }: { children: ReactNode }) => {
   );
 
   return (
-    <ParticlesContext.Provider value={{ create, createHoming }}>
-      {children}
-      <canvas
-        ref={canvasRef}
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          pointerEvents: 'none',
-          zIndex: 9999,
-          display: 'block',
-        }}
-      />
-    </ParticlesContext.Provider>
+    <>
+      <ParticlesContext.Provider value={{ create, createHoming }}>
+        {children}
+      </ParticlesContext.Provider>
+      {createPortal(
+        <canvas
+          ref={canvasRef}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            pointerEvents: 'none',
+            zIndex: 2147483647,
+            display: 'block',
+          }}
+        />,
+        document.body,
+      )}
+    </>
   );
 };

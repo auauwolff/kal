@@ -11,6 +11,7 @@
 import type * as exercise_logs from "../exercise_logs.js";
 import type * as foods from "../foods.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_rewards from "../lib/rewards.js";
 import type * as lib_streaks from "../lib/streaks.js";
 import type * as meal_logs from "../meal_logs.js";
 import type * as stats from "../stats.js";
@@ -27,6 +28,7 @@ declare const fullApi: ApiFromModules<{
   exercise_logs: typeof exercise_logs;
   foods: typeof foods;
   "lib/auth": typeof lib_auth;
+  "lib/rewards": typeof lib_rewards;
   "lib/streaks": typeof lib_streaks;
   meal_logs: typeof meal_logs;
   stats: typeof stats;

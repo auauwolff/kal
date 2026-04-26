@@ -85,6 +85,7 @@ export const ensureAuthUser = async (ctx: MutationCtx): Promise<Doc<'users'>> =>
     longestStreak: 0,
     graceDaysRemaining: 1,
     gemBalance: 0,
+    gemBalanceBackfilledAt: now,
   });
 
   const created = await ctx.db.get(userId);

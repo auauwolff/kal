@@ -38,6 +38,7 @@ export default defineSchema({
     longestStreak: v.number(),
     graceDaysRemaining: v.number(),
     gemBalance: v.number(),
+    gemBalanceBackfilledAt: v.optional(v.number()),
   })
     .index('by_authId', ['authId'])
     .index('by_username', ['username']),
