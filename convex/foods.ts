@@ -78,6 +78,8 @@ const normalizeSearch = (value: string) =>
 const hasAny = (value: string, terms: string[]) =>
   terms.some((term) => value.includes(term));
 
+const isEggQuery = (value: string) => /\beggs?\b/.test(value);
+
 const sourcePriority: Record<IngestItem['source'], number> = {
   afcd: 40,
   ausnut: 35,
@@ -113,6 +115,16 @@ const scoreFoodMatch = (
   else if (name.includes(normalizedQuery)) score += 300;
   else if (brand && brand.includes(normalizedQuery)) score += 220;
   else if (searchText.includes(normalizedQuery)) score += 150;
+
+  const singularQuery = normalizedQuery
+    .replace(/\beggs\b/g, 'egg')
+    .replace(/\bcrumpets\b/g, 'crumpet');
+  if (singularQuery !== normalizedQuery) {
+    if (name === singularQuery) score += 1000;
+    else if (name.startsWith(singularQuery)) score += 650;
+    else if (searchText.startsWith(singularQuery)) score += 450;
+    else if (name.includes(singularQuery)) score += 260;
+  }
 
   for (const term of queryTerms) {
     if (name === term) score += 100;
@@ -178,27 +190,97 @@ const scoreFoodMatch = (
     score += 300;
   }
 
+  if (isEggQuery(normalizedQuery)) {
+    if (hasAny(searchable, ['egg chicken whole', 'egg whole', 'boiled egg', 'poached egg'])) {
+      score += 280;
+    }
+    if (normalizedQuery.includes('boiled') && hasAny(searchable, ['hard boiled', 'hard-boiled'])) {
+      score += 260;
+    }
+    if (normalizedQuery.includes('white') && hasAny(searchable, ['albumen', 'egg white'])) {
+      score += 260;
+    }
+    if (normalizedQuery.includes('yolk') && searchable.includes('yolk')) {
+      score += 260;
+    }
+    if ((normalizedQuery === 'egg' || normalizedQuery === 'eggs') && searchable.includes('benedict')) {
+      score -= 900;
+    }
+  }
+
+  if (normalizedQuery.includes('crumpet') && searchable.includes('crumpet')) {
+    score += 300;
+  }
+
+  if (normalizedQuery.includes('sourdough') && searchable.includes('sourdough')) {
+    score += 400;
+  }
+
+  if (normalizedQuery.includes('cheese')) {
+    if (hasAny(normalizedQuery, ['shredded', 'grated']) && hasAny(searchable, ['shredded', 'grated'])) {
+      score += 320;
+    }
+    if (normalizedQuery.includes('cheddar') && searchable.includes('cheddar')) {
+      score += 220;
+    }
+  }
+
   return score;
 };
 
 const searchQueriesFor = (normalizedQuery: string): string[] => {
   const queries = [normalizedQuery];
+  const addQuery = (query: string) => {
+    if (query.trim()) queries.push(query);
+  };
+
+  if (isEggQuery(normalizedQuery)) {
+    addQuery(normalizedQuery.replace(/\beggs\b/g, 'egg'));
+    addQuery('egg chicken whole');
+    if (normalizedQuery.includes('boiled')) addQuery('egg chicken whole hard boiled');
+    if (normalizedQuery.includes('poached')) addQuery('egg chicken whole poached');
+    if (normalizedQuery.includes('white')) addQuery('egg chicken white albumen');
+    if (normalizedQuery.includes('yolk')) addQuery('egg chicken yolk');
+  }
+
+  if (normalizedQuery.includes('crumpets')) addQuery(normalizedQuery.replace(/\bcrumpets\b/g, 'crumpet'));
+  if (normalizedQuery.includes('sourdough')) {
+    addQuery('sourdough bread');
+    addQuery('bread organic');
+    addQuery('bread spelt');
+  }
 
   if (normalizedQuery.includes('protein shake')) {
-    queries.push('protein drink', 'protein beverage', 'protein prepared water');
+    addQuery('protein drink');
+    addQuery('protein beverage');
+    addQuery('protein prepared water');
   }
   if (normalizedQuery.includes('protein powder')) {
-    queries.push('whey protein powder', 'protein supplement powder');
+    addQuery('whey protein powder');
+    addQuery('protein supplement powder');
   }
   if (normalizedQuery.includes('coffee')) {
-    queries.push('coffee black', 'coffee espresso', 'coffee latte', 'flat white');
+    addQuery('coffee black');
+    addQuery('coffee espresso');
+    addQuery('coffee latte');
+    addQuery('flat white');
   }
   if (
     normalizedQuery.includes('croissant') &&
     normalizedQuery.includes('ham') &&
     normalizedQuery.includes('cheese')
   ) {
-    queries.push('croissant ham cheese', 'croissant cheese');
+    addQuery('croissant ham cheese');
+    addQuery('croissant cheese');
+  }
+  if (normalizedQuery.includes('cheese')) {
+    if (hasAny(normalizedQuery, ['shredded', 'grated'])) {
+      addQuery('shredded cheese');
+      addQuery('grated cheese');
+      addQuery('cheddar cheese');
+      addQuery('mozzarella cheese');
+    }
+    if (normalizedQuery.includes('slice')) addQuery('cheddar cheese slice');
   }
 
   return Array.from(new Set(queries));
