@@ -32,6 +32,7 @@ import type { MealLog } from './types';
 import { MEAL_LABELS, type MealType } from './types';
 import {
   SOURCE_LABELS,
+  friendlyFoodName,
   portionOptionsForFood,
   scaledNutritionForQuantity,
   servingCaloriesForFood,
@@ -81,7 +82,6 @@ export const AddFoodDialog = ({ open, mealType, onClose }: AddFoodDialogProps) =
   const handleRecentAdd = (entry: MealLog) => {
     void relogEntry(mealType, entry)
       .then(() => {
-        toast(`Added ${entry.foodName}`, { icon: '🍽️' });
         onClose();
       })
       .catch((error: unknown) => {
@@ -99,7 +99,6 @@ export const AddFoodDialog = ({ open, mealType, onClose }: AddFoodDialogProps) =
       servingLabel: matchedPortion?.label,
     })
       .then(() => {
-        toast(`Added ${picked.name}`, { icon: '🍽️' });
         onClose();
       })
       .catch((error: unknown) => {
@@ -136,7 +135,7 @@ export const AddFoodDialog = ({ open, mealType, onClose }: AddFoodDialogProps) =
             {picked ? <ArrowBackIcon /> : <CloseIcon />}
           </IconButton>
           <Typography variant="h6" sx={{ flexGrow: 1 }} noWrap>
-            {picked ? picked.name : `Add to ${MEAL_LABELS[mealType]}`}
+            {picked ? friendlyFoodName(picked) : `Add to ${MEAL_LABELS[mealType]}`}
           </Typography>
         </Toolbar>
       </AppBar>
@@ -205,7 +204,7 @@ export const AddFoodDialog = ({ open, mealType, onClose }: AddFoodDialogProps) =
                               sx={{ fontWeight: 500 }}
                               noWrap
                             >
-                              {entry.foodName}
+                              {friendlyFoodName({ name: entry.foodName })}
                             </Typography>
                             <Typography
                               variant="caption"
@@ -250,7 +249,12 @@ export const AddFoodDialog = ({ open, mealType, onClose }: AddFoodDialogProps) =
             ) : (
               <List disablePadding>
                 {results.map((food) => {
-                  const servingKcal = servingCaloriesForFood(food);
+                  const displayName = friendlyFoodName(food);
+                  const primaryPortion = portionOptionsForFood(food)[0] ?? {
+                    label: `${food.defaultServingG} g`,
+                    grams: food.defaultServingG,
+                  };
+                  const servingKcal = servingCaloriesForFood(food, primaryPortion.grams);
                   return (
                     <ListItemButton key={food._id} onClick={() => handlePick(food)}>
                       <Box sx={{ flexGrow: 1, minWidth: 0 }}>
@@ -265,7 +269,7 @@ export const AddFoodDialog = ({ open, mealType, onClose }: AddFoodDialogProps) =
                             sx={{ fontWeight: 500, minWidth: 0, flexGrow: 1 }}
                             noWrap
                           >
-                            {food.name}
+                            {displayName}
                           </Typography>
                           <Chip
                             size="small"
@@ -275,7 +279,7 @@ export const AddFoodDialog = ({ open, mealType, onClose }: AddFoodDialogProps) =
                         </Stack>
                         <Typography variant="caption" color="text.secondary" noWrap>
                           {food.brand ? `${food.brand} · ` : ''}
-                          {food.defaultServingG} g · {servingKcal} kcal
+                          {primaryPortion.label} · {servingKcal} kcal
                         </Typography>
                       </Box>
                     </ListItemButton>

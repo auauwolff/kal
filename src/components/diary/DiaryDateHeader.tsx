@@ -44,27 +44,16 @@ export const DiaryDateHeader = () => {
   const openMenu = (e: React.MouseEvent<HTMLElement>) => setMenuAnchor(e.currentTarget);
   const closeMenu = () => setMenuAnchor(null);
 
-  const runAction = (message: string, icon: string) => {
+  const runAction = () => {
     closeMenu();
-    toast(message, { icon });
   };
 
   const handleCopyYesterday = () => {
     closeMenu();
     const fromDate = shiftISODate(selectedDate, -1);
-    void copyDay({ fromDate, toDate: selectedDate })
-      .then(({ copied }) => {
-        const noun = copied === 1 ? 'item' : 'items';
-        toast(
-          copied > 0
-            ? `Copied ${copied} ${noun} from ${formatDayLabel(fromDate)}`
-            : `${formatDayLabel(fromDate)} has no meals to copy`,
-          { icon: '📋' },
-        );
-      })
-      .catch((error: unknown) => {
-        toast.error(errorMessage(error, 'Could not copy yesterday'));
-      });
+    void copyDay({ fromDate, toDate: selectedDate }).catch((error: unknown) => {
+      toast.error(errorMessage(error, 'Could not copy yesterday'));
+    });
   };
 
   return (
@@ -125,25 +114,19 @@ export const DiaryDateHeader = () => {
           <ListItemText>Copy from yesterday</ListItemText>
         </MenuItem>
         <Divider />
-        <MenuItem
-          onClick={() => runAction('Export day as PDF — Phase 2 export flow', '📄')}
-        >
+        <MenuItem onClick={runAction}>
           <ListItemIcon>
             <PictureAsPdf fontSize="small" sx={{ color: 'secondary.main' }} />
           </ListItemIcon>
           <ListItemText>Export as PDF</ListItemText>
         </MenuItem>
-        <MenuItem
-          onClick={() => runAction('Export day as CSV — Phase 2 export flow', '📊')}
-        >
+        <MenuItem onClick={runAction}>
           <ListItemIcon>
             <TableChart fontSize="small" sx={{ color: 'secondary.main' }} />
           </ListItemIcon>
           <ListItemText>Export as CSV</ListItemText>
         </MenuItem>
-        <MenuItem
-          onClick={() => runAction('Export day as text — Phase 2 export flow', '📝')}
-        >
+        <MenuItem onClick={runAction}>
           <ListItemIcon>
             <Description fontSize="small" sx={{ color: 'secondary.main' }} />
           </ListItemIcon>

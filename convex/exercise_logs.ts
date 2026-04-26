@@ -2,6 +2,7 @@ import { v } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import type { Doc } from './_generated/dataModel';
 import { ensureAuthUser, getAuthUserOrNull, requireAuth } from './lib/auth';
+import { recomputeAndPatchStreak } from './lib/streaks';
 import { exerciseIntensityValidator, exerciseTypeValidator } from './validators';
 
 const toClientExerciseLog = (log: Doc<'exercise_logs'>) => ({
@@ -48,7 +49,7 @@ export const add = mutation({
     }
 
     const user = await ensureAuthUser(ctx);
-    return await ctx.db.insert('exercise_logs', {
+    const exerciseLogId = await ctx.db.insert('exercise_logs', {
       userId: user._id,
       date,
       type,
@@ -57,6 +58,8 @@ export const add = mutation({
       ...(notes ? { notes } : {}),
       loggedAt: Date.now(),
     });
+    await recomputeAndPatchStreak(ctx, user._id);
+    return exerciseLogId;
   },
 });
 
@@ -67,6 +70,7 @@ export const remove = mutation({
     const log = await ctx.db.get(exerciseLogId);
     if (!log || log.userId !== user._id) throw new Error('Exercise log not found');
     await ctx.db.delete(exerciseLogId);
+    await recomputeAndPatchStreak(ctx, user._id);
     return exerciseLogId;
   },
 });

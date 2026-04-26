@@ -13,6 +13,11 @@ import { router } from './router';
 import './index.css';
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
+const workosApiHostname = import.meta.env.VITE_WORKOS_API_HOSTNAME
+  ? import.meta.env.VITE_WORKOS_API_HOSTNAME.replace(/^https?:\/\//, '').replace(/\/$/, '')
+  : undefined;
+const workosDevMode =
+  import.meta.env.VITE_WORKOS_DEV_MODE === 'true' ? true : undefined;
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -20,6 +25,8 @@ createRoot(document.getElementById('root')!).render(
       <AuthKitProvider
         clientId={import.meta.env.VITE_WORKOS_CLIENT_ID}
         redirectUri={import.meta.env.VITE_WORKOS_REDIRECT_URI}
+        apiHostname={workosApiHostname}
+        devMode={workosDevMode}
       >
         <ConvexProviderWithAuthKit client={convex} useAuth={useAuth}>
           <ParticlesProvider>

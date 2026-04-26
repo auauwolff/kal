@@ -29,6 +29,7 @@ import { MEAL_LABELS } from './types';
 import { mealTotals, otherMealTypes } from './diaryUtils';
 import { useDiary } from './useDiary';
 import { AddFoodDialog } from './AddFoodDialog';
+import { friendlyFoodName } from './addFoodDialogUtils';
 import { errorMessage } from '@/lib/errors';
 
 interface MealSectionProps {
@@ -69,7 +70,7 @@ const EntryRow = ({ entry, onMove, onDelete }: EntryRowProps) => {
     <Stack direction="row" sx={{ alignItems: 'center', gap: 1 }}>
       <Box sx={{ flexGrow: 1, minWidth: 0 }}>
         <Typography variant="body2" noWrap sx={{ fontWeight: 500 }}>
-          {entry.foodName}
+          {friendlyFoodName({ name: entry.foodName })}
           {entry.brand && (
             <Box
               component="span"
@@ -161,18 +162,14 @@ export const MealSection = ({ mealType }: MealSectionProps) => {
               key={entry.id}
               entry={entry}
               onMove={(to) => {
-                void moveEntry(entry.id, to)
-                  .then(() => toast(`Moved to ${MEAL_LABELS[to]}`, { icon: '🍽️' }))
-                  .catch((error: unknown) =>
-                    toast.error(errorMessage(error, 'Could not move meal')),
-                  );
+                void moveEntry(entry.id, to).catch((error: unknown) =>
+                  toast.error(errorMessage(error, 'Could not move meal')),
+                );
               }}
               onDelete={() => {
-                void deleteEntry(entry.id)
-                  .then(() => toast(`Deleted ${entry.foodName}`, { icon: '🗑️' }))
-                  .catch((error: unknown) =>
-                    toast.error(errorMessage(error, `Could not delete ${entry.foodName}`)),
-                  );
+                void deleteEntry(entry.id).catch((error: unknown) =>
+                  toast.error(errorMessage(error, `Could not delete ${entry.foodName}`)),
+                );
               }}
             />
           ))}

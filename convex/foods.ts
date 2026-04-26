@@ -6,6 +6,7 @@ import {
   type MutationCtx,
 } from './_generated/server';
 import { internal } from './_generated/api';
+import type { Doc, Id } from './_generated/dataModel';
 
 const foodSourceValidator = v.union(
   v.literal('ausnut'),
@@ -74,6 +75,9 @@ const normalizeSearch = (value: string) =>
     .replace(/[^a-z0-9]+/g, ' ')
     .trim();
 
+const hasAny = (value: string, terms: string[]) =>
+  terms.some((term) => value.includes(term));
+
 const sourcePriority: Record<IngestItem['source'], number> = {
   afcd: 40,
   ausnut: 35,
@@ -97,6 +101,7 @@ const scoreFoodMatch = (
   const name = normalizeSearch(food.name);
   const brand = normalizeSearch(food.brand ?? '');
   const searchText = normalizeSearch(food.searchText);
+  const searchable = `${name} ${brand} ${searchText}`;
 
   let score = sourcePriority[food.source] ?? 0;
 
@@ -132,7 +137,71 @@ const scoreFoodMatch = (
     score += 90;
   }
 
+  if (normalizedQuery.includes('coffee')) {
+    if (
+      hasAny(searchable, [
+        'black',
+        'espresso',
+        'long black',
+        'flat white',
+        'latte',
+        'cappuccino',
+        'prepared',
+      ])
+    ) {
+      score += 220;
+    }
+    if (hasAny(searchable, ['dry powder', 'granules'])) score -= 260;
+  }
+
+  if (normalizedQuery.includes('protein')) {
+    if (
+      hasAny(normalizedQuery, ['powder', 'whey']) &&
+      hasAny(searchable, ['protein powder', 'whey'])
+    ) {
+      score += 300;
+    }
+    if (
+      hasAny(normalizedQuery, ['shake', 'drink', 'beverage']) &&
+      hasAny(searchable, ['prepared with water', 'ready to drink', 'drink', 'beverage'])
+    ) {
+      score += 300;
+    }
+  }
+
+  if (
+    normalizedQuery.includes('croissant') &&
+    normalizedQuery.includes('ham') &&
+    normalizedQuery.includes('cheese') &&
+    hasAny(searchable, ['ham cheese', 'ham and cheese'])
+  ) {
+    score += 300;
+  }
+
   return score;
+};
+
+const searchQueriesFor = (normalizedQuery: string): string[] => {
+  const queries = [normalizedQuery];
+
+  if (normalizedQuery.includes('protein shake')) {
+    queries.push('protein drink', 'protein beverage', 'protein prepared water');
+  }
+  if (normalizedQuery.includes('protein powder')) {
+    queries.push('whey protein powder', 'protein supplement powder');
+  }
+  if (normalizedQuery.includes('coffee')) {
+    queries.push('coffee black', 'coffee espresso', 'coffee latte', 'flat white');
+  }
+  if (
+    normalizedQuery.includes('croissant') &&
+    normalizedQuery.includes('ham') &&
+    normalizedQuery.includes('cheese')
+  ) {
+    queries.push('croissant ham cheese', 'croissant cheese');
+  }
+
+  return Array.from(new Set(queries));
 };
 
 export const searchFoods = query({
@@ -145,12 +214,22 @@ export const searchFoods = query({
     if (normalizedQuery.length === 0) return [];
 
     const requestedLimit = Math.max(1, Math.min(limit ?? 25, 50));
-    const candidates = await ctx.db
-      .query('foods')
-      .withSearchIndex('search_text', (qb) => qb.search('searchText', normalizedQuery))
-      .take(Math.min(requestedLimit * 4, 100));
+    const perQueryLimit = Math.min(requestedLimit * 3, 60);
+    const candidateBatches = await Promise.all(
+      searchQueriesFor(normalizedQuery).map((searchQuery) =>
+        ctx.db
+          .query('foods')
+          .withSearchIndex('search_text', (qb) => qb.search('searchText', searchQuery))
+          .take(perQueryLimit),
+      ),
+    );
 
-    return candidates
+    const candidatesById = new Map<Id<'foods'>, Doc<'foods'>>();
+    for (const batch of candidateBatches) {
+      for (const food of batch) candidatesById.set(food._id, food);
+    }
+
+    return Array.from(candidatesById.values())
       .map((food) => ({
         food,
         score: scoreFoodMatch(food, normalizedQuery),

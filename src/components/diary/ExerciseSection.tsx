@@ -80,7 +80,6 @@ export const ExerciseSection = () => {
       ...(notes.trim() ? { notes: notes.trim() } : {}),
     })
       .then(() => {
-        toast('Exercise logged', { icon: '💪' });
         closeDialog();
       })
       .catch((error: unknown) => {
@@ -149,11 +148,9 @@ export const ExerciseSection = () => {
                 color="error"
                 aria-label={`Delete ${EXERCISE_LABELS[entry.type]}`}
                 onClick={() => {
-                  void deleteExercise(entry.id)
-                    .then(() => toast('Exercise deleted', { icon: '🗑️' }))
-                    .catch((error: unknown) => {
-                      toast.error(errorMessage(error, 'Could not delete exercise'));
-                    });
+                  void deleteExercise(entry.id).catch((error: unknown) => {
+                    toast.error(errorMessage(error, 'Could not delete exercise'));
+                  });
                 }}
               >
                 <DeleteOutline fontSize="small" />

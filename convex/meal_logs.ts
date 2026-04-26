@@ -2,6 +2,7 @@ import { v } from 'convex/values';
 import { mutation, query, type MutationCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
 import { ensureAuthUser, getAuthUserOrNull, requireAuth } from './lib/auth';
+import { recomputeAndPatchStreak } from './lib/streaks';
 import { mealTypeValidator } from './validators';
 
 const round1 = (value: number) => Math.round(value * 10) / 10;
@@ -219,6 +220,7 @@ export const add = mutation({
     });
 
     await recomputeAndPatchDaySnapshot(ctx, user._id, date);
+    await recomputeAndPatchStreak(ctx, user._id);
     return logId;
   },
 });
@@ -251,6 +253,7 @@ export const relog = mutation({
     });
 
     await recomputeAndPatchDaySnapshot(ctx, user._id, date);
+    await recomputeAndPatchStreak(ctx, user._id);
     return logId;
   },
 });
@@ -293,6 +296,7 @@ export const copyDay = mutation({
     }
 
     await recomputeAndPatchDaySnapshot(ctx, user._id, toDate);
+    await recomputeAndPatchStreak(ctx, user._id);
     return { copied };
   },
 });
@@ -319,6 +323,7 @@ export const remove = mutation({
     if (!log || log.userId !== user._id) throw new Error('Meal log not found');
     await ctx.db.delete(mealLogId);
     await recomputeAndPatchDaySnapshot(ctx, user._id, log.date);
+    await recomputeAndPatchStreak(ctx, user._id);
     return mealLogId;
   },
 });
