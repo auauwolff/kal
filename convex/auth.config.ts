@@ -1,10 +1,7 @@
 import { AuthConfig } from 'convex/server';
 
 const clientId = process.env.WORKOS_CLIENT_ID;
-const apiHostname = (process.env.WORKOS_API_HOSTNAME ?? 'api.workos.com')
-  .replace(/^https?:\/\//, '')
-  .replace(/\/$/, '');
-const issuerOrigin = `https://${apiHostname}`;
+const issuerOrigin = 'https://api.workos.com';
 const jwks = `${issuerOrigin}/sso/jwks/${clientId}`;
 
 export default {

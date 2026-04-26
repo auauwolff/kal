@@ -32,7 +32,8 @@ Then:
    - `VITE_WORKOS_CLIENT_ID`: Your WorkOS client ID
    - `VITE_WORKOS_REDIRECT_URI`: Your redirect URI (default: http://localhost:5173/callback)
    - `VITE_CONVEX_URL`: Your Convex deployment URL
-3. Configure your WorkOS client ID as `WORKOS_CLIENT_ID` in your Convex dashboard environment variables
+   - Optional production cookie sessions: `VITE_WORKOS_API_HOSTNAME` (for example `auth.yourdomain.com`)
+3. Configure your WorkOS client ID as `WORKOS_CLIENT_ID` in your Convex dashboard environment variables. If you set a custom auth domain, also configure `WORKOS_API_HOSTNAME` in Convex.
 
 For user management and webhook integration with WorkOS, check out the [WorkOS documentation](https://workos.com/docs/user-management).
 

@@ -16,8 +16,19 @@ const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
 const workosApiHostname = import.meta.env.VITE_WORKOS_API_HOSTNAME
   ? import.meta.env.VITE_WORKOS_API_HOSTNAME.replace(/^https?:\/\//, '').replace(/\/$/, '')
   : undefined;
+const hasCustomWorkosApiHostname =
+  !!workosApiHostname && workosApiHostname !== 'api.workos.com';
+// AuthKit cookie sessions require a same-site custom auth domain in production.
+// Until VITE_WORKOS_API_HOSTNAME is set to a custom domain, keep the deployed
+// prototype in devMode so refresh tokens are stored locally instead of relying
+// on third-party cookies from api.workos.com (which browsers commonly block,
+// causing authenticate 400s).
 const workosDevMode =
-  import.meta.env.VITE_WORKOS_DEV_MODE === 'true' ? true : undefined;
+  import.meta.env.VITE_WORKOS_DEV_MODE === 'true'
+    ? true
+    : import.meta.env.VITE_WORKOS_DEV_MODE === 'false'
+      ? false
+      : !hasCustomWorkosApiHostname;
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
