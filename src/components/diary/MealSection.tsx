@@ -17,6 +17,7 @@ import {
 } from '@mui/material';
 import {
   Add as AddIcon,
+  BookmarkAddOutlined,
   BreakfastDining,
   Cookie,
   DeleteOutline,
@@ -31,6 +32,7 @@ import { mealTotals, otherMealTypes } from './diaryUtils';
 import { useDiary } from './useDiary';
 import { AddFoodDialog } from './AddFoodDialog';
 import { EditEntryDialog } from './EditEntryDialog';
+import { SaveAsMealDialog } from './SaveAsMealDialog';
 import { friendlyFoodName } from './addFoodDialogUtils';
 import { errorMessage } from '@/lib/errors';
 
@@ -139,10 +141,17 @@ export const MealSection = ({ mealType }: MealSectionProps) => {
   const { meals, moveEntry, deleteEntry } = useDiary();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editEntry, setEditEntry] = useState<MealLog | null>(null);
+  const [saveMealOpen, setSaveMealOpen] = useState(false);
+  const [sectionMenuAnchor, setSectionMenuAnchor] = useState<null | HTMLElement>(null);
   const entries = meals[mealType];
   const totals = mealTotals(entries);
 
   const handleAdd = () => setDialogOpen(true);
+  const closeSectionMenu = () => setSectionMenuAnchor(null);
+  const handleSaveAsMeal = () => {
+    closeSectionMenu();
+    setSaveMealOpen(true);
+  };
 
   return (
     <Card variant="outlined">
@@ -170,10 +179,36 @@ export const MealSection = ({ mealType }: MealSectionProps) => {
               </Box>
             </Typography>
           </Stack>
-          <IconButton size="small" color="secondary" onClick={handleAdd}>
-            <AddIcon />
-          </IconButton>
+          <Stack direction="row" sx={{ alignItems: 'center' }}>
+            <IconButton size="small" color="secondary" onClick={handleAdd}>
+              <AddIcon />
+            </IconButton>
+            {entries.length > 0 && (
+              <IconButton
+                size="small"
+                onClick={(e) => setSectionMenuAnchor(e.currentTarget)}
+                aria-label={`More ${MEAL_LABELS[mealType]} actions`}
+              >
+                <MoreVert fontSize="small" />
+              </IconButton>
+            )}
+          </Stack>
         </Stack>
+        <Menu
+          anchorEl={sectionMenuAnchor}
+          open={Boolean(sectionMenuAnchor)}
+          onClose={closeSectionMenu}
+          anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+          transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+          slotProps={{ paper: { sx: { minWidth: 200 } } }}
+        >
+          <MenuItem onClick={handleSaveAsMeal}>
+            <ListItemIcon>
+              <BookmarkAddOutlined fontSize="small" sx={{ color: 'secondary.main' }} />
+            </ListItemIcon>
+            <ListItemText>Save as meal…</ListItemText>
+          </MenuItem>
+        </Menu>
 
         {entries.length > 0 && <Divider sx={{ my: 1 }} />}
 
@@ -219,6 +254,13 @@ export const MealSection = ({ mealType }: MealSectionProps) => {
         open={Boolean(editEntry)}
         entry={editEntry}
         onClose={() => setEditEntry(null)}
+      />
+      <SaveAsMealDialog
+        key={saveMealOpen ? `open-${mealType}` : 'closed'}
+        open={saveMealOpen}
+        mealType={mealType}
+        itemCount={entries.length}
+        onClose={() => setSaveMealOpen(false)}
       />
     </Card>
   );

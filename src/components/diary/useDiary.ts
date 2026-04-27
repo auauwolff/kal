@@ -27,12 +27,25 @@ interface UpdateEntryArgs {
   servingLabel?: string | null;
 }
 
+interface MealTemplateItemInput {
+  foodId: string;
+  quantityG: number;
+  servingLabel?: string;
+}
+
 interface AddExerciseArgs {
   type: ExerciseType;
   durationMin: number;
   intensity: ExerciseIntensity;
   notes?: string;
 }
+
+const toBackendItems = (items: MealTemplateItemInput[]) =>
+  items.map((item) => ({
+    foodId: item.foodId as Id<'foods'>,
+    quantityG: item.quantityG,
+    ...(item.servingLabel ? { servingLabel: item.servingLabel } : {}),
+  }));
 
 const emptyDay = (date: string): DayDiary => ({
   date,
@@ -50,6 +63,7 @@ export const useDiary = () => {
     | MealLog[]
     | undefined;
   const userQuery = useQuery(api.users.get, {});
+  const mealTemplatesQuery = useQuery(api.meal_templates.list, {});
   const addMealLog = useMutation(api.meal_logs.add);
   const relogMealLog = useMutation(api.meal_logs.relog);
   const moveMealLog = useMutation(api.meal_logs.move);
@@ -57,6 +71,11 @@ export const useDiary = () => {
   const updateMealLog = useMutation(api.meal_logs.update);
   const addExerciseLog = useMutation(api.exercise_logs.add);
   const removeExerciseLog = useMutation(api.exercise_logs.remove);
+  const createTemplate = useMutation(api.meal_templates.create);
+  const updateTemplate = useMutation(api.meal_templates.update);
+  const removeTemplate = useMutation(api.meal_templates.remove);
+  const createTemplateFromSection = useMutation(api.meal_templates.createFromSection);
+  const logTemplate = useMutation(api.meal_templates.log);
   const targets = dailyTargetsFromProfile(profileFromUser(userQuery));
 
   const addEntry = useCallback(
@@ -133,10 +152,57 @@ export const useDiary = () => {
     [removeExerciseLog],
   );
 
+  const createMealTemplate = useCallback(
+    async ({ name, items }: { name: string; items: MealTemplateItemInput[] }) =>
+      createTemplate({ name, items: toBackendItems(items) }),
+    [createTemplate],
+  );
+
+  const updateMealTemplate = useCallback(
+    async (
+      id: string,
+      patch: { name?: string; items?: MealTemplateItemInput[] },
+    ) => {
+      await updateTemplate({
+        id: id as Id<'meal_templates'>,
+        ...(patch.name !== undefined ? { name: patch.name } : {}),
+        ...(patch.items !== undefined ? { items: toBackendItems(patch.items) } : {}),
+      });
+    },
+    [updateTemplate],
+  );
+
+  const deleteMealTemplate = useCallback(
+    async (id: string) => {
+      await removeTemplate({ id: id as Id<'meal_templates'> });
+    },
+    [removeTemplate],
+  );
+
+  const saveSectionAsMealTemplate = useCallback(
+    async ({ name, mealType }: { name: string; mealType: MealType }) =>
+      createTemplateFromSection({ name, date: selectedDate, mealType }),
+    [createTemplateFromSection, selectedDate],
+  );
+
+  const logMealTemplate = useCallback(
+    async (mealType: MealType, templateId: string) => {
+      const result = await logTemplate({
+        id: templateId as Id<'meal_templates'>,
+        date: selectedDate,
+        mealType,
+      });
+      useGemsStore.getState().addGems(GEMS_PER_LOG);
+      return result;
+    },
+    [logTemplate, selectedDate],
+  );
+
   return {
     ...(dayQuery ?? emptyDay(selectedDate)),
     targets,
     recentFoods: recentFoodsQuery ?? [],
+    mealTemplates: mealTemplatesQuery ?? [],
     addEntry,
     relogEntry,
     moveEntry,
@@ -144,5 +210,10 @@ export const useDiary = () => {
     updateEntry,
     addExercise,
     deleteExercise,
+    createMealTemplate,
+    updateMealTemplate,
+    deleteMealTemplate,
+    saveSectionAsMealTemplate,
+    logMealTemplate,
   };
 };

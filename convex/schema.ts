@@ -134,9 +134,12 @@ export default defineSchema({
       v.object({
         foodId: v.id('foods'),
         quantityG: v.number(),
+        servingLabel: v.optional(v.string()),
       }),
     ),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index('by_userId', ['userId']),
+  })
+    .index('by_userId', ['userId'])
+    .index('by_userId_and_updatedAt', ['userId', 'updatedAt']),
 });
