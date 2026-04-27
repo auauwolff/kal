@@ -21,11 +21,22 @@ export const backfillMyGems = mutation({
     const user = await requireAuth(ctx);
     if (user.gemBalanceBackfilledAt) return user.gemBalance;
 
-    const logs = await ctx.db
+    const mealLogs = await ctx.db
       .query('meal_logs')
       .withIndex('by_userId_and_loggedAt', (q) => q.eq('userId', user._id))
-      .take(1000);
-    const backfilledBalance = logs.length * GEMS_PER_LOG;
+      .take(5000);
+    const mealCategoryDays = new Set<string>();
+    for (const log of mealLogs) mealCategoryDays.add(`${log.date}|${log.mealType}`);
+
+    const exerciseLogs = await ctx.db
+      .query('exercise_logs')
+      .withIndex('by_userId_and_loggedAt', (q) => q.eq('userId', user._id))
+      .take(5000);
+    const exerciseDays = new Set<string>();
+    for (const log of exerciseLogs) exerciseDays.add(log.date);
+
+    const backfilledBalance =
+      (mealCategoryDays.size + exerciseDays.size) * GEMS_PER_LOG;
     const gemBalance = Math.max(user.gemBalance, backfilledBalance);
 
     await ctx.db.patch(user._id, {

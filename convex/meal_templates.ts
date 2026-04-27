@@ -2,7 +2,7 @@ import { v } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
 import { getAuthUserOrNull, requireAuth } from './lib/auth';
-import { awardGems, GEMS_PER_LOG } from './lib/rewards';
+import { awardGems, GEMS_PER_LOG, isFirstMealEntryOfDay } from './lib/rewards';
 import { recomputeAndPatchStreak } from './lib/streaks';
 import { recomputeAndPatchDaySnapshot } from './lib/dayTotals';
 import { mealTypeValidator } from './validators';
@@ -257,6 +257,8 @@ export const log = mutation({
     const template = await ctx.db.get(id);
     if (!template || template.userId !== user._id) throw new Error('Meal not found');
 
+    const isFirst = await isFirstMealEntryOfDay(ctx, user._id, date, mealType);
+
     let loggedCount = 0;
     let missingCount = 0;
     const baseTime = Date.now();
@@ -296,8 +298,12 @@ export const log = mutation({
     await ctx.db.patch(id, { updatedAt: Date.now() });
     await recomputeAndPatchDaySnapshot(ctx, user._id, date);
     await recomputeAndPatchStreak(ctx, user._id);
-    await awardGems(ctx, user._id, GEMS_PER_LOG);
+    let gemsAwarded = 0;
+    if (isFirst) {
+      await awardGems(ctx, user._id, GEMS_PER_LOG);
+      gemsAwarded = GEMS_PER_LOG;
+    }
 
-    return { loggedCount, missingCount };
+    return { loggedCount, missingCount, gemsAwarded };
   },
 });

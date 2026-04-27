@@ -2,7 +2,7 @@ import { v } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
 import { ensureAuthUser, getAuthUserOrNull, requireAuth } from './lib/auth';
-import { awardGems, GEMS_PER_LOG } from './lib/rewards';
+import { awardGems, GEMS_PER_LOG, isFirstMealEntryOfDay } from './lib/rewards';
 import { recomputeAndPatchStreak } from './lib/streaks';
 import { recomputeAndPatchDaySnapshot } from './lib/dayTotals';
 import { mealTypeValidator } from './validators';
@@ -159,6 +159,8 @@ export const add = mutation({
     const food = await ctx.db.get(foodId);
     if (!food) throw new Error('Food not found');
 
+    const isFirst = await isFirstMealEntryOfDay(ctx, user._id, date, mealType);
+
     const scale = quantityG / 100;
     const logId = await ctx.db.insert('meal_logs', {
       userId: user._id,
@@ -178,8 +180,12 @@ export const add = mutation({
 
     await recomputeAndPatchDaySnapshot(ctx, user._id, date);
     await recomputeAndPatchStreak(ctx, user._id);
-    await awardGems(ctx, user._id, GEMS_PER_LOG);
-    return logId;
+    let gemsAwarded = 0;
+    if (isFirst) {
+      await awardGems(ctx, user._id, GEMS_PER_LOG);
+      gemsAwarded = GEMS_PER_LOG;
+    }
+    return { logId, gemsAwarded };
   },
 });
 
@@ -193,6 +199,8 @@ export const relog = mutation({
     const user = await requireAuth(ctx);
     const source = await ctx.db.get(sourceMealLogId);
     if (!source || source.userId !== user._id) throw new Error('Meal log not found');
+
+    const isFirst = await isFirstMealEntryOfDay(ctx, user._id, date, mealType);
 
     const logId = await ctx.db.insert('meal_logs', {
       userId: user._id,
@@ -212,8 +220,12 @@ export const relog = mutation({
 
     await recomputeAndPatchDaySnapshot(ctx, user._id, date);
     await recomputeAndPatchStreak(ctx, user._id);
-    await awardGems(ctx, user._id, GEMS_PER_LOG);
-    return logId;
+    let gemsAwarded = 0;
+    if (isFirst) {
+      await awardGems(ctx, user._id, GEMS_PER_LOG);
+      gemsAwarded = GEMS_PER_LOG;
+    }
+    return { logId, gemsAwarded };
   },
 });
 

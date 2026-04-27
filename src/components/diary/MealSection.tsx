@@ -12,6 +12,7 @@ import {
   Menu,
   MenuItem,
   Stack,
+  Tooltip,
   Typography,
   useTheme,
 } from '@mui/material';
@@ -142,25 +143,34 @@ export const MealSection = ({ mealType }: MealSectionProps) => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editEntry, setEditEntry] = useState<MealLog | null>(null);
   const [saveMealOpen, setSaveMealOpen] = useState(false);
-  const [sectionMenuAnchor, setSectionMenuAnchor] = useState<null | HTMLElement>(null);
   const entries = meals[mealType];
   const totals = mealTotals(entries);
 
   const handleAdd = () => setDialogOpen(true);
-  const closeSectionMenu = () => setSectionMenuAnchor(null);
-  const handleSaveAsMeal = () => {
-    closeSectionMenu();
-    setSaveMealOpen(true);
-  };
+  const handleSaveAsMeal = () => setSaveMealOpen(true);
 
   return (
     <Card variant="outlined">
       <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
-        <Stack
-          direction="row"
-          sx={{ alignItems: 'center', justifyContent: 'space-between' }}
-        >
-          <Stack direction="row" sx={{ alignItems: 'baseline', gap: 1 }}>
+        <Stack direction="row" sx={{ alignItems: 'center', gap: 0.5 }}>
+          {entries.length > 0 && (
+            <Tooltip title="Save as meal">
+              <IconButton
+                size="small"
+                onClick={handleSaveAsMeal}
+                aria-label={`Save ${MEAL_LABELS[mealType]} as meal`}
+              >
+                <BookmarkAddOutlined
+                  fontSize="small"
+                  sx={{ color: 'secondary.main' }}
+                />
+              </IconButton>
+            </Tooltip>
+          )}
+          <Stack
+            direction="row"
+            sx={{ alignItems: 'baseline', gap: 1, flexGrow: 1, minWidth: 0 }}
+          >
             <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
               {MEAL_LABELS[mealType]}
             </Typography>
@@ -179,36 +189,10 @@ export const MealSection = ({ mealType }: MealSectionProps) => {
               </Box>
             </Typography>
           </Stack>
-          <Stack direction="row" sx={{ alignItems: 'center' }}>
-            <IconButton size="small" color="secondary" onClick={handleAdd}>
-              <AddIcon />
-            </IconButton>
-            {entries.length > 0 && (
-              <IconButton
-                size="small"
-                onClick={(e) => setSectionMenuAnchor(e.currentTarget)}
-                aria-label={`More ${MEAL_LABELS[mealType]} actions`}
-              >
-                <MoreVert fontSize="small" />
-              </IconButton>
-            )}
-          </Stack>
+          <IconButton size="small" color="secondary" onClick={handleAdd}>
+            <AddIcon />
+          </IconButton>
         </Stack>
-        <Menu
-          anchorEl={sectionMenuAnchor}
-          open={Boolean(sectionMenuAnchor)}
-          onClose={closeSectionMenu}
-          anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-          transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-          slotProps={{ paper: { sx: { minWidth: 200 } } }}
-        >
-          <MenuItem onClick={handleSaveAsMeal}>
-            <ListItemIcon>
-              <BookmarkAddOutlined fontSize="small" sx={{ color: 'secondary.main' }} />
-            </ListItemIcon>
-            <ListItemText>Save as meal…</ListItemText>
-          </MenuItem>
-        </Menu>
 
         {entries.length > 0 && <Divider sx={{ my: 1 }} />}
 

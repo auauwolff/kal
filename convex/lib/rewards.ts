@@ -1,4 +1,4 @@
-import type { Id } from '../_generated/dataModel';
+import type { Doc, Id } from '../_generated/dataModel';
 import type { MutationCtx } from '../_generated/server';
 
 export const GEMS_PER_LOG = 5;
@@ -17,4 +17,34 @@ export const awardGems = async (
     gemBalance: Math.max(0, user.gemBalance + amount),
     updatedAt: Date.now(),
   });
+};
+
+export const isFirstMealEntryOfDay = async (
+  ctx: MutationCtx,
+  userId: Id<'users'>,
+  date: string,
+  mealType: Doc<'meal_logs'>['mealType'],
+) => {
+  for await (const log of ctx.db
+    .query('meal_logs')
+    .withIndex('by_userId_and_date', (q) =>
+      q.eq('userId', userId).eq('date', date),
+    )) {
+    if (log.mealType === mealType) return false;
+  }
+  return true;
+};
+
+export const isFirstExerciseEntryOfDay = async (
+  ctx: MutationCtx,
+  userId: Id<'users'>,
+  date: string,
+) => {
+  const existing = await ctx.db
+    .query('exercise_logs')
+    .withIndex('by_userId_and_date', (q) =>
+      q.eq('userId', userId).eq('date', date),
+    )
+    .first();
+  return existing === null;
 };

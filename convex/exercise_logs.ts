@@ -2,6 +2,7 @@ import { v } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import type { Doc } from './_generated/dataModel';
 import { ensureAuthUser, getAuthUserOrNull, requireAuth } from './lib/auth';
+import { awardGems, GEMS_PER_LOG, isFirstExerciseEntryOfDay } from './lib/rewards';
 import { recomputeAndPatchStreak } from './lib/streaks';
 import { exerciseIntensityValidator, exerciseTypeValidator } from './validators';
 
@@ -49,6 +50,7 @@ export const add = mutation({
     }
 
     const user = await ensureAuthUser(ctx);
+    const isFirst = await isFirstExerciseEntryOfDay(ctx, user._id, date);
     const exerciseLogId = await ctx.db.insert('exercise_logs', {
       userId: user._id,
       date,
@@ -59,7 +61,12 @@ export const add = mutation({
       loggedAt: Date.now(),
     });
     await recomputeAndPatchStreak(ctx, user._id);
-    return exerciseLogId;
+    let gemsAwarded = 0;
+    if (isFirst) {
+      await awardGems(ctx, user._id, GEMS_PER_LOG);
+      gemsAwarded = GEMS_PER_LOG;
+    }
+    return { exerciseLogId, gemsAwarded };
   },
 });
 

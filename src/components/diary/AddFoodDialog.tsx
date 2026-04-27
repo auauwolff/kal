@@ -198,8 +198,8 @@ export const AddFoodDialog = ({ open, mealType, onClose }: AddFoodDialogProps) =
             value={tab}
             onChange={(_, value: Tab) => setTab(value)}
             variant="fullWidth"
-            textColor="secondary"
-            indicatorColor="secondary"
+            textColor="primary"
+            indicatorColor="primary"
             sx={{ borderBottom: 1, borderColor: 'divider', minHeight: 40 }}
           >
             <Tab

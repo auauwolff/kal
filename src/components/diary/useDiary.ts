@@ -13,7 +13,16 @@ import { useGemsStore } from '@/stores/gemsStore';
 import { useDiaryStore } from '@/stores/diaryStore';
 import { dailyTargetsFromProfile, profileFromUser } from '@/lib/profile';
 
-const GEMS_PER_LOG = 5;
+const prefersReducedMotion = () =>
+  typeof window !== 'undefined' &&
+  window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
+
+const fireGemAnimation = (gemsAwarded: number) => {
+  if (gemsAwarded <= 0) return;
+  useGemsStore
+    .getState()
+    .addGems(gemsAwarded, { stagger: !prefersReducedMotion() });
+};
 
 interface AddEntryArgs {
   mealType: MealType;
@@ -80,26 +89,26 @@ export const useDiary = () => {
 
   const addEntry = useCallback(
     async ({ mealType, foodId, quantityG, servingLabel }: AddEntryArgs) => {
-      await addMealLog({
+      const result = await addMealLog({
         date: selectedDate,
         mealType,
         foodId: foodId as Id<'foods'>,
         quantityG,
         ...(servingLabel ? { servingLabel } : {}),
       });
-      useGemsStore.getState().addGems(GEMS_PER_LOG);
+      fireGemAnimation(result.gemsAwarded);
     },
     [addMealLog, selectedDate],
   );
 
   const relogEntry = useCallback(
     async (mealType: MealType, source: MealLog) => {
-      await relogMealLog({
+      const result = await relogMealLog({
         sourceMealLogId: source.id as Id<'meal_logs'>,
         date: selectedDate,
         mealType,
       });
-      useGemsStore.getState().addGems(GEMS_PER_LOG);
+      fireGemAnimation(result.gemsAwarded);
     },
     [relogMealLog, selectedDate],
   );
@@ -134,13 +143,14 @@ export const useDiary = () => {
 
   const addExercise = useCallback(
     async ({ type, durationMin, intensity, notes }: AddExerciseArgs) => {
-      await addExerciseLog({
+      const result = await addExerciseLog({
         date: selectedDate,
         type,
         durationMin,
         intensity,
         ...(notes ? { notes } : {}),
       });
+      fireGemAnimation(result.gemsAwarded);
     },
     [addExerciseLog, selectedDate],
   );
@@ -192,7 +202,7 @@ export const useDiary = () => {
         date: selectedDate,
         mealType,
       });
-      useGemsStore.getState().addGems(GEMS_PER_LOG);
+      fireGemAnimation(result.gemsAwarded);
       return result;
     },
     [logTemplate, selectedDate],
