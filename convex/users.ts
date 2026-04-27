@@ -1,7 +1,7 @@
 import { v } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import { ensureAuthUser, getAuthUserOrNull, requireAuth } from './lib/auth';
-import { GEMS_PER_LOG } from './lib/rewards';
+import { GEMS_PER_EXERCISE_LOG, GEMS_PER_MEAL_LOG } from './lib/rewards';
 import {
   bodyStatsValidator,
   userTargetsValidator,
@@ -36,7 +36,8 @@ export const backfillMyGems = mutation({
     for (const log of exerciseLogs) exerciseDays.add(log.date);
 
     const backfilledBalance =
-      (mealCategoryDays.size + exerciseDays.size) * GEMS_PER_LOG;
+      mealCategoryDays.size * GEMS_PER_MEAL_LOG +
+      exerciseDays.size * GEMS_PER_EXERCISE_LOG;
     const gemBalance = Math.max(user.gemBalance, backfilledBalance);
 
     await ctx.db.patch(user._id, {

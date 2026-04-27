@@ -1,7 +1,8 @@
 import type { Doc, Id } from '../_generated/dataModel';
 import type { MutationCtx } from '../_generated/server';
 
-export const GEMS_PER_LOG = 5;
+export const GEMS_PER_MEAL_LOG = 1;
+export const GEMS_PER_EXERCISE_LOG = 5;
 
 export const awardGems = async (
   ctx: MutationCtx,

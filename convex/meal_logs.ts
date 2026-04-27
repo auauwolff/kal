@@ -2,7 +2,7 @@ import { v } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
 import { ensureAuthUser, getAuthUserOrNull, requireAuth } from './lib/auth';
-import { awardGems, GEMS_PER_LOG, isFirstMealEntryOfDay } from './lib/rewards';
+import { awardGems, GEMS_PER_MEAL_LOG, isFirstMealEntryOfDay } from './lib/rewards';
 import { recomputeAndPatchStreak } from './lib/streaks';
 import { recomputeAndPatchDaySnapshot } from './lib/dayTotals';
 import { mealTypeValidator } from './validators';
@@ -182,8 +182,8 @@ export const add = mutation({
     await recomputeAndPatchStreak(ctx, user._id);
     let gemsAwarded = 0;
     if (isFirst) {
-      await awardGems(ctx, user._id, GEMS_PER_LOG);
-      gemsAwarded = GEMS_PER_LOG;
+      await awardGems(ctx, user._id, GEMS_PER_MEAL_LOG);
+      gemsAwarded = GEMS_PER_MEAL_LOG;
     }
     return { logId, gemsAwarded };
   },
@@ -222,8 +222,8 @@ export const relog = mutation({
     await recomputeAndPatchStreak(ctx, user._id);
     let gemsAwarded = 0;
     if (isFirst) {
-      await awardGems(ctx, user._id, GEMS_PER_LOG);
-      gemsAwarded = GEMS_PER_LOG;
+      await awardGems(ctx, user._id, GEMS_PER_MEAL_LOG);
+      gemsAwarded = GEMS_PER_MEAL_LOG;
     }
     return { logId, gemsAwarded };
   },

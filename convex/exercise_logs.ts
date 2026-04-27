@@ -2,7 +2,7 @@ import { v } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import type { Doc } from './_generated/dataModel';
 import { ensureAuthUser, getAuthUserOrNull, requireAuth } from './lib/auth';
-import { awardGems, GEMS_PER_LOG, isFirstExerciseEntryOfDay } from './lib/rewards';
+import { awardGems, GEMS_PER_EXERCISE_LOG, isFirstExerciseEntryOfDay } from './lib/rewards';
 import { recomputeAndPatchStreak } from './lib/streaks';
 import { exerciseIntensityValidator, exerciseTypeValidator } from './validators';
 
@@ -63,8 +63,8 @@ export const add = mutation({
     await recomputeAndPatchStreak(ctx, user._id);
     let gemsAwarded = 0;
     if (isFirst) {
-      await awardGems(ctx, user._id, GEMS_PER_LOG);
-      gemsAwarded = GEMS_PER_LOG;
+      await awardGems(ctx, user._id, GEMS_PER_EXERCISE_LOG);
+      gemsAwarded = GEMS_PER_EXERCISE_LOG;
     }
     return { exerciseLogId, gemsAwarded };
   },
