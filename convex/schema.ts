@@ -74,6 +74,7 @@ export default defineSchema({
       }),
     ),
     searchText: v.string(),
+    isPrimary: v.optional(v.boolean()),
   })
     .index('by_barcode', ['barcode'])
     .index('by_source_and_sourceId', ['source', 'sourceId'])

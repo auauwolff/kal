@@ -7,6 +7,10 @@ import {
 } from './_generated/server';
 import { internal } from './_generated/api';
 import type { Doc, Id } from './_generated/dataModel';
+import { ensureAuthUser } from './lib/auth';
+import { curatedFoods } from './data/curatedFoods';
+import { primaryFoods } from './data/primaryFoods';
+import { slugFoods } from './data/slugFoods';
 
 const foodSourceValidator = v.union(
   v.literal('ausnut'),
@@ -96,6 +100,7 @@ const scoreFoodMatch = (
     name: string;
     brand?: string;
     searchText: string;
+    isPrimary?: boolean;
   },
   normalizedQuery: string,
 ): number => {
@@ -106,6 +111,7 @@ const scoreFoodMatch = (
   const searchable = `${name} ${brand} ${searchText}`;
 
   let score = sourcePriority[food.source] ?? 0;
+  if (food.isPrimary) score += 2000;
 
   if (name === normalizedQuery) score += 1000;
   else if (brand && `${brand} ${name}` === normalizedQuery) score += 950;
@@ -401,6 +407,113 @@ export const adminClearSourceData = mutation({
     requireAdmin(secret);
     await ctx.scheduler.runAfter(0, internal.foods.clearSourceData, {});
     return { scheduled: true as const };
+  },
+});
+
+export const getById = query({
+  args: { id: v.id('foods') },
+  handler: async (ctx, { id }) => ctx.db.get(id),
+});
+
+export const createCustom = mutation({
+  args: {
+    name: v.string(),
+    brand: v.optional(v.string()),
+    defaultServingG: v.number(),
+    nutrientsPer100g: nutrientsValidator,
+    commonPortions: v.optional(portionsValidator),
+  },
+  handler: async (ctx, args) => {
+    const trimmedName = args.name.trim();
+    if (trimmedName.length === 0) throw new Error('Name is required');
+    if (!Number.isFinite(args.defaultServingG) || args.defaultServingG <= 0) {
+      throw new Error('Default serving must be greater than 0g');
+    }
+    await ensureAuthUser(ctx);
+
+    const item: IngestItem = {
+      source: 'user_contributed',
+      sourceId: crypto.randomUUID(),
+      name: trimmedName,
+      ...(args.brand && args.brand.trim() ? { brand: args.brand.trim() } : {}),
+      defaultServingG: args.defaultServingG,
+      nutrientsPer100g: args.nutrientsPer100g,
+      commonPortions: args.commonPortions ?? [],
+    };
+    const searchText = buildIngestSearchText(item);
+    return await ctx.db.insert('foods', { ...item, searchText });
+  },
+});
+
+export const markPrimary = internalMutation({
+  args: {
+    items: v.array(
+      v.object({ source: foodSourceValidator, sourceId: v.string() }),
+    ),
+  },
+  handler: async (ctx, { items }) => {
+    let matched = 0;
+    const missing: string[] = [];
+    for (const { source, sourceId } of items) {
+      const food = await ctx.db
+        .query('foods')
+        .withIndex('by_source_and_sourceId', (q) =>
+          q.eq('source', source).eq('sourceId', sourceId),
+        )
+        .unique();
+      if (!food) {
+        missing.push(`${source}:${sourceId}`);
+        continue;
+      }
+      if (!food.isPrimary) await ctx.db.patch(food._id, { isPrimary: true });
+      matched++;
+    }
+    return { matched, missing };
+  },
+});
+
+// One-shot seed: inserts/updates curated foods (slug-style hand-curated
+// entries, mash potato, GYG menu items) and flips `isPrimary` on the full
+// curated list. Idempotent — safe to re-run.
+export const seedCuratedFoods = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    let inserted = 0;
+    let updated = 0;
+    for (const item of [...slugFoods, ...curatedFoods]) {
+      const existing = await ctx.db
+        .query('foods')
+        .withIndex('by_source_and_sourceId', (q) =>
+          q.eq('source', item.source).eq('sourceId', item.sourceId),
+        )
+        .unique();
+      const searchText = buildIngestSearchText(item);
+      if (existing) {
+        await ctx.db.patch(existing._id, { ...item, searchText });
+        updated++;
+      } else {
+        await ctx.db.insert('foods', { ...item, searchText });
+        inserted++;
+      }
+    }
+
+    let primariesMatched = 0;
+    const primariesMissing: string[] = [];
+    for (const { source, sourceId } of primaryFoods) {
+      const food = await ctx.db
+        .query('foods')
+        .withIndex('by_source_and_sourceId', (q) =>
+          q.eq('source', source).eq('sourceId', sourceId),
+        )
+        .unique();
+      if (!food) {
+        primariesMissing.push(`${source}:${sourceId}`);
+        continue;
+      }
+      if (!food.isPrimary) await ctx.db.patch(food._id, { isPrimary: true });
+      primariesMatched++;
+    }
+    return { inserted, updated, primariesMatched, primariesMissing };
   },
 });
 

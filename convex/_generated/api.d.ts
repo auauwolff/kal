@@ -8,6 +8,9 @@
  * @module
  */
 
+import type * as data_curatedFoods from "../data/curatedFoods.js";
+import type * as data_primaryFoods from "../data/primaryFoods.js";
+import type * as data_slugFoods from "../data/slugFoods.js";
 import type * as exercise_logs from "../exercise_logs.js";
 import type * as foods from "../foods.js";
 import type * as lib_auth from "../lib/auth.js";
@@ -25,6 +28,9 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "data/curatedFoods": typeof data_curatedFoods;
+  "data/primaryFoods": typeof data_primaryFoods;
+  "data/slugFoods": typeof data_slugFoods;
   exercise_logs: typeof exercise_logs;
   foods: typeof foods;
   "lib/auth": typeof lib_auth;

@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import {
   Box,
   Button,
+  ButtonBase,
   Card,
   CardContent,
   Divider,
@@ -29,6 +30,7 @@ import { MEAL_LABELS } from './types';
 import { mealTotals, otherMealTypes } from './diaryUtils';
 import { useDiary } from './useDiary';
 import { AddFoodDialog } from './AddFoodDialog';
+import { EditEntryDialog } from './EditEntryDialog';
 import { friendlyFoodName } from './addFoodDialogUtils';
 import { errorMessage } from '@/lib/errors';
 
@@ -45,14 +47,18 @@ const MEAL_ICONS: Record<MealType, ReactNode> = {
 
 interface EntryRowProps {
   entry: MealLog;
+  onEdit: () => void;
   onMove: (to: MealType) => void;
   onDelete: () => void;
 }
 
-const EntryRow = ({ entry, onMove, onDelete }: EntryRowProps) => {
+const EntryRow = ({ entry, onEdit, onMove, onDelete }: EntryRowProps) => {
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(menuAnchor);
-  const openMenu = (e: React.MouseEvent<HTMLElement>) => setMenuAnchor(e.currentTarget);
+  const openMenu = (e: React.MouseEvent<HTMLElement>) => {
+    e.stopPropagation();
+    setMenuAnchor(e.currentTarget);
+  };
   const closeMenu = () => setMenuAnchor(null);
 
   const handleMove = (to: MealType) => {
@@ -68,23 +74,37 @@ const EntryRow = ({ entry, onMove, onDelete }: EntryRowProps) => {
 
   return (
     <Stack direction="row" sx={{ alignItems: 'center', gap: 1 }}>
-      <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-        <Typography variant="body2" noWrap sx={{ fontWeight: 500 }}>
-          {friendlyFoodName({ name: entry.foodName })}
-          {entry.brand && (
-            <Box
-              component="span"
-              sx={{ color: 'text.secondary', fontWeight: 400 }}
-            >
-              {' '}· {entry.brand}
-            </Box>
-          )}
-        </Typography>
-        <Typography variant="caption" color="text.secondary">
-          {entry.servingLabel ?? `${entry.quantityG} g`} ·{' '}
-          {Math.round(entry.calories)} kcal
-        </Typography>
-      </Box>
+      <ButtonBase
+        onClick={onEdit}
+        sx={{
+          flexGrow: 1,
+          minWidth: 0,
+          textAlign: 'left',
+          py: 0.5,
+          px: 0.5,
+          mx: -0.5,
+          borderRadius: 1,
+          justifyContent: 'flex-start',
+        }}
+      >
+        <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+          <Typography variant="body2" noWrap sx={{ fontWeight: 500 }}>
+            {friendlyFoodName({ name: entry.foodName })}
+            {entry.brand && (
+              <Box
+                component="span"
+                sx={{ color: 'text.secondary', fontWeight: 400 }}
+              >
+                {' '}· {entry.brand}
+              </Box>
+            )}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {entry.servingLabel ?? `${entry.quantityG} g`} ·{' '}
+            {Math.round(entry.calories)} kcal
+          </Typography>
+        </Box>
+      </ButtonBase>
       <IconButton size="small" edge="end" onClick={openMenu}>
         <MoreVert fontSize="small" />
       </IconButton>
@@ -118,6 +138,7 @@ export const MealSection = ({ mealType }: MealSectionProps) => {
   const theme = useTheme();
   const { meals, moveEntry, deleteEntry } = useDiary();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editEntry, setEditEntry] = useState<MealLog | null>(null);
   const entries = meals[mealType];
   const totals = mealTotals(entries);
 
@@ -161,6 +182,7 @@ export const MealSection = ({ mealType }: MealSectionProps) => {
             <EntryRow
               key={entry.id}
               entry={entry}
+              onEdit={() => setEditEntry(entry)}
               onMove={(to) => {
                 void moveEntry(entry.id, to).catch((error: unknown) =>
                   toast.error(errorMessage(error, 'Could not move meal')),
@@ -191,6 +213,12 @@ export const MealSection = ({ mealType }: MealSectionProps) => {
         open={dialogOpen}
         mealType={mealType}
         onClose={() => setDialogOpen(false)}
+      />
+      <EditEntryDialog
+        key={editEntry?.id ?? 'closed'}
+        open={Boolean(editEntry)}
+        entry={editEntry}
+        onClose={() => setEditEntry(null)}
       />
     </Card>
   );

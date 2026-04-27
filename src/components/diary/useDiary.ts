@@ -22,6 +22,11 @@ interface AddEntryArgs {
   servingLabel?: string;
 }
 
+interface UpdateEntryArgs {
+  quantityG: number;
+  servingLabel?: string | null;
+}
+
 interface AddExerciseArgs {
   type: ExerciseType;
   durationMin: number;
@@ -49,6 +54,7 @@ export const useDiary = () => {
   const relogMealLog = useMutation(api.meal_logs.relog);
   const moveMealLog = useMutation(api.meal_logs.move);
   const removeMealLog = useMutation(api.meal_logs.remove);
+  const updateMealLog = useMutation(api.meal_logs.update);
   const addExerciseLog = useMutation(api.exercise_logs.add);
   const removeExerciseLog = useMutation(api.exercise_logs.remove);
   const targets = dailyTargetsFromProfile(profileFromUser(userQuery));
@@ -96,6 +102,17 @@ export const useDiary = () => {
     [removeMealLog],
   );
 
+  const updateEntry = useCallback(
+    async (entryId: string, { quantityG, servingLabel }: UpdateEntryArgs) => {
+      await updateMealLog({
+        mealLogId: entryId as Id<'meal_logs'>,
+        quantityG,
+        ...(servingLabel === undefined ? {} : { servingLabel }),
+      });
+    },
+    [updateMealLog],
+  );
+
   const addExercise = useCallback(
     async ({ type, durationMin, intensity, notes }: AddExerciseArgs) => {
       await addExerciseLog({
@@ -124,6 +141,7 @@ export const useDiary = () => {
     relogEntry,
     moveEntry,
     deleteEntry,
+    updateEntry,
     addExercise,
     deleteExercise,
   };

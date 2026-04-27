@@ -22,6 +22,7 @@ import {
   Add as AddIcon,
   ArrowBack as ArrowBackIcon,
   Close as CloseIcon,
+  EditNote as EditNoteIcon,
   Search as SearchIcon,
 } from '@mui/icons-material';
 import { useQuery } from 'convex/react';
@@ -40,6 +41,7 @@ import {
 import { useDiary } from './useDiary';
 import { useDebounce } from '@/hooks/useDebounce';
 import { errorMessage } from '@/lib/errors';
+import { ManualFoodDialog } from './ManualFoodDialog';
 
 interface AddFoodDialogProps {
   open: boolean;
@@ -52,6 +54,7 @@ export const AddFoodDialog = ({ open, mealType, onClose }: AddFoodDialogProps) =
   const debouncedSearch = useDebounce(search, 200);
   const [picked, setPicked] = useState<Doc<'foods'> | null>(null);
   const [quantityG, setQuantityG] = useState<number>(0);
+  const [manualOpen, setManualOpen] = useState(false);
   const { addEntry, relogEntry, recentFoods } = useDiary();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -167,6 +170,16 @@ export const AddFoodDialog = ({ open, mealType, onClose }: AddFoodDialogProps) =
             }}
           />
 
+          <Button
+            size="small"
+            color="secondary"
+            startIcon={<EditNoteIcon />}
+            onClick={() => setManualOpen(true)}
+            sx={{ alignSelf: 'flex-start', mt: -1 }}
+          >
+            Can't find it? Add manually
+          </Button>
+
           <Box sx={{ flexGrow: 1, overflowY: 'auto', minHeight: 0 }}>
             {trimmedSearch.length === 0 ? (
               recentFoods.length > 0 ? (
@@ -239,13 +252,20 @@ export const AddFoodDialog = ({ open, mealType, onClose }: AddFoodDialogProps) =
                 Searching…
               </Typography>
             ) : results.length === 0 ? (
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ p: 2, textAlign: 'center' }}
-              >
-                No foods found.
-              </Typography>
+              <Stack sx={{ p: 2, alignItems: 'center', gap: 1.5 }}>
+                <Typography variant="body2" color="text.secondary">
+                  No foods found.
+                </Typography>
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  size="small"
+                  startIcon={<EditNoteIcon />}
+                  onClick={() => setManualOpen(true)}
+                >
+                  Add "{trimmedSearch}" manually
+                </Button>
+              </Stack>
             ) : (
               <List disablePadding>
                 {results.map((food) => {
@@ -385,6 +405,13 @@ export const AddFoodDialog = ({ open, mealType, onClose }: AddFoodDialogProps) =
           </Button>
         </Box>
       )}
+      <ManualFoodDialog
+        open={manualOpen}
+        mealType={mealType}
+        initialName={trimmedSearch}
+        onClose={() => setManualOpen(false)}
+        onLogged={onClose}
+      />
     </Dialog>
   );
 };

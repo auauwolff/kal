@@ -330,3 +330,34 @@ export const remove = mutation({
     return mealLogId;
   },
 });
+
+export const update = mutation({
+  args: {
+    mealLogId: v.id('meal_logs'),
+    quantityG: v.number(),
+    servingLabel: v.optional(v.union(v.string(), v.null())),
+  },
+  handler: async (ctx, { mealLogId, quantityG, servingLabel }) => {
+    assertPositiveQuantity(quantityG);
+    const user = await requireAuth(ctx);
+    const log = await ctx.db.get(mealLogId);
+    if (!log || log.userId !== user._id) throw new Error('Meal log not found');
+    const food = await ctx.db.get(log.foodId);
+    if (!food) throw new Error('Food not found');
+
+    const scale = quantityG / 100;
+    const patch: Partial<Doc<'meal_logs'>> = {
+      quantityG,
+      calories: Math.round(food.nutrientsPer100g.calories * scale),
+      proteinG: round1(food.nutrientsPer100g.proteinG * scale),
+      carbsG: round1(food.nutrientsPer100g.carbsG * scale),
+      fatG: round1(food.nutrientsPer100g.fatG * scale),
+    };
+    if (servingLabel === null) patch.servingLabel = undefined;
+    else if (typeof servingLabel === 'string') patch.servingLabel = servingLabel;
+
+    await ctx.db.patch(mealLogId, patch);
+    await recomputeAndPatchDaySnapshot(ctx, user._id, log.date);
+    return mealLogId;
+  },
+});
