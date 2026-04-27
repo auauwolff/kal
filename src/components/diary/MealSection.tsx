@@ -153,20 +153,25 @@ export const MealSection = ({ mealType }: MealSectionProps) => {
     <Card variant="outlined">
       <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
         <Stack direction="row" sx={{ alignItems: 'center', gap: 0.5 }}>
-          {entries.length > 0 && (
-            <Tooltip title="Save as meal">
+          <Tooltip
+            title={entries.length > 0 ? 'Save as meal' : 'Add foods first'}
+          >
+            <span>
               <IconButton
                 size="small"
                 onClick={handleSaveAsMeal}
+                disabled={entries.length === 0}
                 aria-label={`Save ${MEAL_LABELS[mealType]} as meal`}
               >
                 <BookmarkAddOutlined
                   fontSize="small"
-                  sx={{ color: 'secondary.main' }}
+                  sx={{
+                    color: entries.length > 0 ? 'secondary.main' : undefined,
+                  }}
                 />
               </IconButton>
-            </Tooltip>
-          )}
+            </span>
+          </Tooltip>
           <Stack
             direction="row"
             sx={{ alignItems: 'baseline', gap: 1, flexGrow: 1, minWidth: 0 }}
