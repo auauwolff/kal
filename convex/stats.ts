@@ -109,10 +109,17 @@ export const getRange = query({
         weights: [],
         exerciseWeeks: [],
         currentStreak: 0,
+        longestStreak: 0,
+        currentWeightKg: null,
+        goal: null,
+        prevPeriodAverages: null,
       };
     }
 
-    const [mealLogs, weightLogs, exerciseLogs] = await Promise.all([
+    const prevEndDate = shiftISO(startDate, -1);
+    const prevStartDate = shiftISO(startDate, -rangeDays);
+
+    const [mealLogs, weightLogs, exerciseLogs, prevMealLogs] = await Promise.all([
       ctx.db
         .query('meal_logs')
         .withIndex('by_userId_and_date', (q) =>
@@ -131,6 +138,12 @@ export const getRange = query({
           q.eq('userId', user._id).gte('date', startDate).lte('date', endDate),
         )
         .take(1000),
+      ctx.db
+        .query('meal_logs')
+        .withIndex('by_userId_and_date', (q) =>
+          q.eq('userId', user._id).gte('date', prevStartDate).lte('date', prevEndDate),
+        )
+        .take(2000),
     ]);
 
     for (const log of mealLogs) {
@@ -194,12 +207,35 @@ export const getRange = query({
         week.weekStart >= shiftISO(endDate, -Math.max(rangeDays, 28)),
     );
 
+    const prevDayCount = new Set(prevMealLogs.map((log) => log.date)).size;
+    let prevPeriodAverages = null;
+    if (prevDayCount > 0) {
+      const totals = { calories: 0, proteinG: 0, carbsG: 0, fatG: 0 };
+      for (const log of prevMealLogs) {
+        totals.calories += log.calories;
+        totals.proteinG += log.proteinG;
+        totals.carbsG += log.carbsG;
+        totals.fatG += log.fatG;
+      }
+      prevPeriodAverages = {
+        calories: Math.round(totals.calories / prevDayCount),
+        proteinG: Math.round(totals.proteinG / prevDayCount),
+        carbsG: Math.round(totals.carbsG / prevDayCount),
+        fatG: Math.round(totals.fatG / prevDayCount),
+        days: prevDayCount,
+      };
+    }
+
     return {
       rangeDays,
       days: Array.from(dayMap.values()),
       weights,
       exerciseWeeks,
       currentStreak: user.currentStreak,
+      longestStreak: user.longestStreak,
+      currentWeightKg: user.bodyStats?.weightKg ?? null,
+      goal: user.goal ?? null,
+      prevPeriodAverages,
     };
   },
 });

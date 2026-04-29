@@ -11,6 +11,9 @@ export const CalorieIntakeCard = () => {
   const calories = data.map((d) => d.calories);
   const target = data[0]?.targetCalories ?? 2600;
   const avg = average(calories);
+  const prevAvg = stats?.prevPeriodAverages?.calories ?? null;
+  const rangeDays = stats?.rangeDays ?? 7;
+  const prevDelta = prevAvg !== null ? avg - prevAvg : null;
 
   const option = {
     grid: { top: 20, right: 12, bottom: 24, left: 48 },
@@ -67,7 +70,11 @@ export const CalorieIntakeCard = () => {
             Calorie intake
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            {stats ? `avg ${avg} / target ${target} kcal` : 'Loading…'}
+            {!stats
+              ? 'Loading…'
+              : prevDelta === null
+                ? `avg ${avg} / target ${target} kcal`
+                : `avg ${avg} / target ${target} kcal · ${prevDelta === 0 ? 'flat' : `${prevDelta > 0 ? '↑' : '↓'} ${Math.abs(prevDelta)}`} vs prev ${rangeDays}d`}
           </Typography>
         </Stack>
         <ReactECharts option={option} style={{ height: 200 }} />

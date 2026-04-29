@@ -2,6 +2,7 @@ import { Card, CardContent, Stack, Typography, useTheme } from '@mui/material';
 import ReactECharts from 'echarts-for-react';
 import { useStatsData } from '@/hooks/useStatsData';
 import { useStatsStore } from '@/stores/statsStore';
+import { shiftISODate, todayISO } from '@/lib/date';
 
 export const StreakHeatmapCard = () => {
   const theme = useTheme();
@@ -9,9 +10,10 @@ export const StreakHeatmapCard = () => {
   const stats = useStatsData();
   const data = stats?.days ?? [];
   const hits = data.filter((d) => d.streakStatus >= 2).length;
+  const longestStreak = stats?.longestStreak ?? 0;
 
-  const start = data[0]?.date ?? '';
-  const end = data[data.length - 1]?.date ?? '';
+  const end = data[data.length - 1]?.date ?? todayISO();
+  const start = data[0]?.date ?? shiftISODate(end, -(range - 1));
 
   const option = {
     tooltip: {
@@ -41,7 +43,7 @@ export const StreakHeatmapCard = () => {
       left: 30,
       right: 10,
       cellSize: ['auto', 14],
-      range: start && end ? [start, end] : undefined,
+      range: [start, end],
       dayLabel: {
         color: theme.palette.text.secondary,
         firstDay: 1,
@@ -74,7 +76,9 @@ export const StreakHeatmapCard = () => {
             Streak history
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            {stats ? `${hits} / ${data.length} days on target` : 'Loading…'}
+            {!stats
+              ? 'Loading…'
+              : `${hits} / ${data.length} days on target${longestStreak > 0 ? ` · best ${longestStreak}d` : ''}`}
           </Typography>
         </Stack>
         <ReactECharts

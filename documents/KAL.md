@@ -4,7 +4,7 @@
 
 This is the single canonical document for the Kal project. It supersedes `archive/KAL_SPECS.md` and `archive/IMPLEMENTATION.md`. Everything — goals, stack, schema, roadmap, open questions — lives here. When a decision changes, update this file.
 
-*Last updated: 2026-04-25 — Owner: Felipe (fewo@dhigroup.com)*
+*Last updated: 2026-04-29 — Owner: Felipe (fewo@dhigroup.com)*
 
 ## Current status
 
@@ -16,6 +16,7 @@ This is the single canonical document for the Kal project. It supersedes `archiv
 - ✅ **Convex diary backbone + portion picker** (2026-04-25): `users`, `meal_logs`, `exercise_logs`, `weights`, `favorites`, and `meal_templates` are now in `convex/schema.ts`; `convex/lib/auth.ts` provides `getAuthUserOrNull`, `requireAuth`, and `ensureAuthUser`; `convex/meal_logs.ts` exposes real by-date, recent, add, relog, move, delete, and copy-day mutations. Diary add / delete / move / recent-food / Copy Yesterday flows now use Convex instead of local mock state while keeping the Phase 2 `+5` gem celebration placeholder. The abandoned freeform quick-add panel was removed; selecting a searched food now opens a simpler portion picker with friendly chips like 1 slice, 2 slices, half pizza, whole pizza, small/regular/large cake slice, plus grams. Exercise add/delete is also wired to Convex.
 - ✅ **Gem rule rework + Save-as-meal polish** (2026-04-27): gems are now awarded server-side on the **first entry of the day per category**. Meal categories (Breakfast / Lunch / Dinner / Snack) award **+1 gem** each; Exercise awards **+5 gems**. Subsequent entries in any category award nothing, closing the water-spam farm path called out in §2.2. Daily logging cap = 4 + 5 = **9 gems/day**. Exercise's +5 animates as five staggered +1 bursts (180 ms apart) for a Duolingo-style cascade; meal entries fire the same single-pulse animation as before. Reduced-motion users get a single combined burst. `users.backfillMyGems` migrated to `(distinct meal category-days × 1) + (distinct exercise days × 5)` without shrinking existing balances. Diary UI: section-level **Save as meal** button (`BookmarkAddOutlined`) now lives on the **left** of each meal header (opposite the `+`), disabled when the section is empty. `AddFoodDialog` Foods/Meals tabs switched to the orange primary palette.
 - ✅ **Weight tracking** (2026-04-29): `convex/weights.ts` now exposes `latest` / `getRecent` queries and `logForDate` / `remove` mutations (one entry per date — same-day re-logs replace). Saving a new weight in Settings → Body Stats also appends a `weights` row for today via a shared `upsertWeightRow` helper, so the Stats Weight chart populates from the user's onboarding weight without a separate logging step. The Diary date-header row got a compact weight chip (left of the kebab) — plain orange text `82.0 kg`, no icon (an icon read as ambiguous in user testing), tap opens `WeightLogDialog`; tooltip shows last-weighed date + days-since. Stats `WeightTrendCard` got a small `+` quick-log icon next to its header subtitle. Both surfaces open the shared `WeightLogDialog` (date picker + kg field) which prefills with the latest known weight. No gem reward on weigh-ins for now (kept in line with §2.2 anti-farm principle); Sunday-cron weekly adjustment will read this table next.
+- ✅ **Stats motivation layer** (2026-04-29): Stats page now leads with a `HeroScoreboardCard` (2×2 grid, ignores range toggle) showing current weight + Δ7d, kg-to-go (or "Reached" / "Recomp" / "Set a goal" → /settings), days on target, and current streak with best-streak caption — copy never goes red, per §2.4. `WeightTrendCard` switched its 7-day SMA overlay to a 0.1-α EWMA (raw weighs faded), added a dashed horizontal target-weight reference line, and a dotted goal-pace diagonal interpolated from first weigh-in to `goal.targetDateISO`; subtitle reads `latest → target · ETA Mon DD '26` (or `holding` / `trend off` / `Goal reached` / maintain band / no-goal fallback) using `projectETA()` (14-day slope extrapolation). `MacroSplitCard` rebuilt as three stacked per-macro bar rows (Protein / Carbs / Fat) each with its own dashed target line and `avg X g · target Y g · ↑/↓ Δ vs prev · on target` caption — finally surfaces macro targets, which the old stacked-area chart didn't. `CalorieIntakeCard` subtitle gains `↑/↓ X vs prev Nd`; `StreakHeatmapCard` subtitle gains `· best Nd`. One Convex query change: `api.stats.getRange` now also returns `longestStreak`, `currentWeightKg`, `goal`, and `prevPeriodAverages` (one extra `meal_logs` `withIndex` read for the prior window) — no schema change, no migration. Also fixed a latent ECharts Calendar crash on empty-data renders (`Cannot read properties of undefined (reading 'toString')`) by always passing an explicit `[start, end]` to the streak heatmap. Helpers: `ewma()` and `projectETA()` in `src/components/stats/statsUtils.ts`.
 - ⏭️ **Next:** copy-from-any-day, barcode fallback via Open Food Facts, weekly-adjustment cron (now that `weights` is populating), and CSV export.
 
 ---
@@ -368,16 +369,17 @@ Backed by the `exercise_logs` table (see §6). Types: `strength` · `cardio` · 
 
 ### Stats page (Phase 2)
 
-Foodvisor- and Cronometer-inspired trend views. Each card supports a 7 / 30 / 90-day toggle; charts via ECharts.
+MacroFactor- and Cronometer-inspired trend views built around a "where am I right now" hero + target-aware cards. The 7 / 30 / 90-day toggle drives every card except the hero, which always shows current state. Charts via ECharts.
 
-1. **Weight trend** — line chart + 7-day rolling trend overlay. Shows latest weight + delta vs 7 days ago + delta vs 30 days ago. Quick-log button on the card.
-2. **Calorie intake** — daily bars with the target as a reference line. Shows week-over-week average. Highlights days outside ±15% of target.
-3. **Macro split** — stacked area chart (P/C/F per day), with 7-day averages vs targets.
-4. **Streak history** — calendar heatmap (GitHub-contribution style), colour-graded by whether the daily calorie target was hit.
+0. **Hero scoreboard** (always visible, ignores range toggle) — 2×2 grid: current weight + Δ7d (EWMA-based) · kg-to-go to target (or "Set a goal" → /settings, or "Reached" / "Recomp" / "From target") · days on target in range · current streak with flame icon and best-streak caption. Pure typography, no charts — sets emotional tone before scrolling. Never red, per §2.4.
+1. **Weight trend** — daily weighs (faded), EWMA trend line (orange), dashed horizontal target-weight reference, dotted goal-pace diagonal interpolated from first weigh-in to the target date. Subtitle reads `latest → target · ETA Mon DD '26` (or `holding` / `trend off` / `Goal reached` / maintain band / no-goal fallback). ETA uses a 14-day EWMA-slope extrapolation. Quick-log `+` button stays.
+2. **Calorie intake** — daily bars vs target line (success within ±10%, warning over, info under). Subtitle appends `↑/↓ X vs prev Nd` when prior-period data exists.
+3. **Macros vs target** — three stacked per-macro bar rows (Protein / Carbs / Fat) each with its own dashed target line. Caption row below each: `avg X g · target Y g · ↑/↓ Δ vs prev · on target`.
+4. **Streak history** — calendar heatmap (GitHub-contribution style), colour-graded 0–3 (miss / logged / target-hit / perfect). Subtitle adds `· best Nd`. Always passes a valid `[start, end]` to the calendar (computed from `rangeDays` if data is empty) to avoid the ECharts `_initRangeOption` crash.
 5. **Exercise consistency** — weekly stacked bars by exercise type. Minutes or sessions toggle.
 6. **Nutrient coverage** (stretch — wires up once AUSNUT micros are in the `foods` table) — Cronometer-style grid of daily % of RDI for the 20 key micros.
 
-All data via Convex queries — no `useEffect` polling (§3 conventions).
+All data via one Convex query (`api.stats.getRange`) which now returns `longestStreak`, `currentWeightKg`, `goal`, `prevPeriodAverages` alongside the per-day, weights and exercise-week series. No `useEffect` polling (§3 conventions).
 
 ### Settings page (Phase 2 — shipped 2026-04-25)
 

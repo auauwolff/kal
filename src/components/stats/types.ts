@@ -1,4 +1,5 @@
 import type { ExerciseType } from '@/components/diary/types';
+import type { WeightGoal } from '@/lib/userTypes';
 
 export type StatsRange = 7 | 30 | 90;
 
@@ -26,10 +27,22 @@ export interface ExerciseWeek {
   minutes: Record<ExerciseType, number>;
 }
 
+export interface PrevPeriodAverages {
+  calories: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+  days: number;
+}
+
 export interface StatsData {
   rangeDays: StatsRange;
   days: StatsDay[];
   weights: WeightPoint[];
   exerciseWeeks: ExerciseWeek[];
   currentStreak: number;
+  longestStreak: number;
+  currentWeightKg: number | null;
+  goal: WeightGoal | null;
+  prevPeriodAverages: PrevPeriodAverages | null;
 }

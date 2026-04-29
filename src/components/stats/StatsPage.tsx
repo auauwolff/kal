@@ -4,6 +4,7 @@ import {
   ToggleButton,
   ToggleButtonGroup,
 } from '@mui/material';
+import { HeroScoreboardCard } from '@/components/stats/HeroScoreboardCard';
 import { WeightTrendCard } from '@/components/stats/WeightTrendCard';
 import { CalorieIntakeCard } from '@/components/stats/CalorieIntakeCard';
 import { MacroSplitCard } from '@/components/stats/MacroSplitCard';
@@ -19,6 +20,7 @@ export const StatsPage = () => {
   return (
     <Box sx={{ maxWidth: 720, mx: 'auto', width: '100%', p: { xs: 2, sm: 3 } }}>
       <Stack sx={{ gap: 2 }}>
+        <HeroScoreboardCard />
         <Stack direction="row" sx={{ justifyContent: 'center' }}>
           <ToggleButtonGroup
             value={range}
