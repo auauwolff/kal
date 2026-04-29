@@ -22,6 +22,7 @@ import type * as meal_templates from "../meal_templates.js";
 import type * as stats from "../stats.js";
 import type * as users from "../users.js";
 import type * as validators from "../validators.js";
+import type * as weights from "../weights.js";
 
 import type {
   ApiFromModules,
@@ -44,6 +45,7 @@ declare const fullApi: ApiFromModules<{
   stats: typeof stats;
   users: typeof users;
   validators: typeof validators;
+  weights: typeof weights;
 }>;
 
 /**

@@ -1,11 +1,15 @@
-import { Card, CardContent, Stack, Typography, useTheme } from '@mui/material';
+import { useState } from 'react';
+import { Card, CardContent, IconButton, Stack, Tooltip, Typography, useTheme } from '@mui/material';
+import { Add } from '@mui/icons-material';
 import ReactECharts from 'echarts-for-react';
 import { useStatsData } from '@/hooks/useStatsData';
+import { WeightLogDialog } from '@/components/weight/WeightLogDialog';
 import { rollingMean } from './statsUtils';
 
 export const WeightTrendCard = () => {
   const theme = useTheme();
   const stats = useStatsData();
+  const [dialogOpen, setDialogOpen] = useState(false);
   const data = stats?.weights ?? [];
   const dates = data.map((d) => d.date);
   const weights = data.map((d) => d.weightKg);
@@ -70,17 +74,33 @@ export const WeightTrendCard = () => {
       <CardContent>
         <Stack
           direction="row"
-          sx={{ alignItems: 'baseline', justifyContent: 'space-between', mb: 1 }}
+          sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1, gap: 1 }}
         >
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
             Weight
           </Typography>
-          <Typography variant="caption" color="text.secondary">
-            {subtitle}
-          </Typography>
+          <Stack direction="row" sx={{ alignItems: 'center', gap: 0.5 }}>
+            <Typography variant="caption" color="text.secondary">
+              {subtitle}
+            </Typography>
+            <Tooltip title="Log weight">
+              <IconButton
+                size="small"
+                color="primary"
+                onClick={() => setDialogOpen(true)}
+              >
+                <Add fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Stack>
         </Stack>
         <ReactECharts option={option} style={{ height: 200 }} />
       </CardContent>
+      <WeightLogDialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        defaultWeightKg={latest ?? null}
+      />
     </Card>
   );
 };

@@ -26,8 +26,10 @@ import { useMutation, useQuery } from 'convex/react';
 import toast from 'react-hot-toast';
 import { api } from '../../../convex/_generated/api';
 import { getTodayISO, useDiaryStore } from '@/stores/diaryStore';
-import { formatDayLabel, shiftISODate } from '@/lib/date';
+import { formatDayLabel, shiftISODate, todayISO } from '@/lib/date';
 import { errorMessage } from '@/lib/errors';
+import { getWeighInStatus, humanizeDaysSince } from '@/lib/weighIn';
+import { WeightLogDialog } from '@/components/weight/WeightLogDialog';
 
 export const DiaryDateHeader = () => {
   const { selectedDate, goPrevDay, goNextDay, goToday } = useDiaryStore();
@@ -43,6 +45,16 @@ export const DiaryDateHeader = () => {
   const menuOpen = Boolean(menuAnchor);
   const openMenu = (e: React.MouseEvent<HTMLElement>) => setMenuAnchor(e.currentTarget);
   const closeMenu = () => setMenuAnchor(null);
+
+  const latestWeight = useQuery(api.weights.latest, {});
+  const settingsWeight = user?.bodyStats?.weightKg ?? null;
+  const [weightDialogOpen, setWeightDialogOpen] = useState(false);
+  const showWeightChip = latestWeight !== undefined && (latestWeight !== null || settingsWeight != null);
+  const weighInStatus = getWeighInStatus(latestWeight?.date ?? null, todayISO());
+  const chipWeightKg = latestWeight?.weightKg ?? settingsWeight;
+  const weightTooltip = !latestWeight
+    ? 'Log your first weigh-in'
+    : `last ${formatDayLabel(latestWeight.date)} · ${humanizeDaysSince(weighInStatus.kind === 'never' ? 0 : weighInStatus.daysSince)}`;
 
   const runAction = () => {
     closeMenu();
@@ -89,16 +101,36 @@ export const DiaryDateHeader = () => {
           <ChevronRight />
         </IconButton>
       </Stack>
-      <Tooltip title="Day actions">
-        <IconButton
-          size="small"
-          color="secondary"
-          onClick={openMenu}
-          sx={{ position: 'absolute', right: 0 }}
-        >
-          <MoreVert />
-        </IconButton>
-      </Tooltip>
+      <Stack
+        direction="row"
+        sx={{ position: 'absolute', right: 0, alignItems: 'center', gap: 0.25 }}
+      >
+        {showWeightChip && chipWeightKg != null && (
+          <Tooltip title={weightTooltip}>
+            <Button
+              size="small"
+              variant="text"
+              onClick={() => setWeightDialogOpen(true)}
+              sx={{
+                minWidth: 0,
+                px: 1,
+                color: 'primary.main',
+                fontWeight: 700,
+                fontSize: 16,
+                lineHeight: 1,
+                textTransform: 'none',
+              }}
+            >
+              {`${chipWeightKg.toFixed(1)} kg`}
+            </Button>
+          </Tooltip>
+        )}
+        <Tooltip title="Day actions">
+          <IconButton size="small" color="secondary" onClick={openMenu}>
+            <MoreVert />
+          </IconButton>
+        </Tooltip>
+      </Stack>
       <Menu
         anchorEl={menuAnchor}
         open={menuOpen}
@@ -133,6 +165,11 @@ export const DiaryDateHeader = () => {
           <ListItemText>Export as text</ListItemText>
         </MenuItem>
       </Menu>
+      <WeightLogDialog
+        open={weightDialogOpen}
+        onClose={() => setWeightDialogOpen(false)}
+        defaultWeightKg={chipWeightKg}
+      />
     </Box>
   );
 };

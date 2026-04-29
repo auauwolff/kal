@@ -7,6 +7,15 @@ import {
   userTargetsValidator,
   weightGoalValidator,
 } from './validators';
+import { upsertWeightRow } from './weights';
+
+const todayISO = (): string => {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 export const get = query({
   args: {},
@@ -58,6 +67,7 @@ export const upsertProfile = mutation({
   },
   handler: async (ctx, { bodyStats, goal, targets }) => {
     const user = await ensureAuthUser(ctx);
+    const previousWeightKg = user.bodyStats?.weightKg ?? null;
     const targetWeightKg = goal
       ? goal.type === 'maintain'
         ? bodyStats?.weightKg ?? goal.targetWeightKg
@@ -75,6 +85,10 @@ export const upsertProfile = mutation({
       dailyFatG: targets.fatG.value,
       updatedAt: Date.now(),
     });
+
+    if (bodyStats && bodyStats.weightKg !== previousWeightKg) {
+      await upsertWeightRow(ctx, user._id, todayISO(), bodyStats.weightKg);
+    }
 
     return await ctx.db.get(user._id);
   },
