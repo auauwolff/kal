@@ -39,9 +39,47 @@ export default defineSchema({
     graceDaysRemaining: v.number(),
     gemBalance: v.number(),
     gemBalanceBackfilledAt: v.optional(v.number()),
+
+    lastLoggedDate: v.optional(v.string()),
   })
     .index('by_authId', ['authId'])
     .index('by_username', ['username']),
+
+  friendships: defineTable({
+    userA: v.id('users'),
+    userB: v.id('users'),
+    status: v.union(
+      v.literal('pending'),
+      v.literal('accepted'),
+      v.literal('blocked'),
+    ),
+    initiatedBy: v.id('users'),
+    acceptedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index('by_userA_status', ['userA', 'status'])
+    .index('by_userB_status', ['userB', 'status'])
+    .index('by_pair', ['userA', 'userB']),
+
+  friend_streaks: defineTable({
+    userA: v.id('users'),
+    userB: v.id('users'),
+    currentDays: v.number(),
+    longestDays: v.number(),
+    lastBothLoggedDate: v.optional(v.string()),
+  })
+    .index('by_pair', ['userA', 'userB'])
+    .index('by_userA', ['userA'])
+    .index('by_userB', ['userB']),
+
+  cheers: defineTable({
+    fromUser: v.id('users'),
+    toUser: v.id('users'),
+    date: v.string(),
+    createdAt: v.number(),
+  })
+    .index('by_toUser_date', ['toUser', 'date'])
+    .index('by_fromUser_toUser_date', ['fromUser', 'toUser', 'date']),
 
   foods: defineTable({
     source: v.union(

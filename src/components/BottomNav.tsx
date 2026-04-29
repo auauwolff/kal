@@ -4,6 +4,7 @@ import {
   Paper,
 } from '@mui/material';
 import {
+  Group as FriendsIcon,
   RestaurantMenu as DiaryIcon,
   ShowChart as StatsIcon,
 } from '@mui/icons-material';
@@ -21,6 +22,7 @@ const navItems = [
   { label: 'Diary', icon: <DiaryIcon />, path: '/' },
   { label: '', icon: <KalIcon />, path: '/kal' },
   { label: 'Stats', icon: <StatsIcon />, path: '/stats' },
+  { label: 'Friends', icon: <FriendsIcon />, path: '/friends' },
 ];
 
 export const BottomNav = () => {

@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as StatsRouteImport } from './routes/stats'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as KalRouteImport } from './routes/kal'
+import { Route as FriendsRouteImport } from './routes/friends'
 import { Route as CallbackRouteImport } from './routes/callback'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -30,6 +31,11 @@ const KalRoute = KalRouteImport.update({
   path: '/kal',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FriendsRoute = FriendsRouteImport.update({
+  id: '/friends',
+  path: '/friends',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CallbackRoute = CallbackRouteImport.update({
   id: '/callback',
   path: '/callback',
@@ -44,6 +50,7 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/callback': typeof CallbackRoute
+  '/friends': typeof FriendsRoute
   '/kal': typeof KalRoute
   '/settings': typeof SettingsRoute
   '/stats': typeof StatsRoute
@@ -51,6 +58,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/callback': typeof CallbackRoute
+  '/friends': typeof FriendsRoute
   '/kal': typeof KalRoute
   '/settings': typeof SettingsRoute
   '/stats': typeof StatsRoute
@@ -59,21 +67,30 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/callback': typeof CallbackRoute
+  '/friends': typeof FriendsRoute
   '/kal': typeof KalRoute
   '/settings': typeof SettingsRoute
   '/stats': typeof StatsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/callback' | '/kal' | '/settings' | '/stats'
+  fullPaths: '/' | '/callback' | '/friends' | '/kal' | '/settings' | '/stats'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/callback' | '/kal' | '/settings' | '/stats'
-  id: '__root__' | '/' | '/callback' | '/kal' | '/settings' | '/stats'
+  to: '/' | '/callback' | '/friends' | '/kal' | '/settings' | '/stats'
+  id:
+    | '__root__'
+    | '/'
+    | '/callback'
+    | '/friends'
+    | '/kal'
+    | '/settings'
+    | '/stats'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CallbackRoute: typeof CallbackRoute
+  FriendsRoute: typeof FriendsRoute
   KalRoute: typeof KalRoute
   SettingsRoute: typeof SettingsRoute
   StatsRoute: typeof StatsRoute
@@ -102,6 +119,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof KalRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/friends': {
+      id: '/friends'
+      path: '/friends'
+      fullPath: '/friends'
+      preLoaderRoute: typeof FriendsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/callback': {
       id: '/callback'
       path: '/callback'
@@ -122,6 +146,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CallbackRoute: CallbackRoute,
+  FriendsRoute: FriendsRoute,
   KalRoute: KalRoute,
   SettingsRoute: SettingsRoute,
   StatsRoute: StatsRoute,

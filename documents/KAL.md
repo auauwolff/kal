@@ -17,6 +17,7 @@ This is the single canonical document for the Kal project. It supersedes `archiv
 - ✅ **Gem rule rework + Save-as-meal polish** (2026-04-27): gems are now awarded server-side on the **first entry of the day per category**. Meal categories (Breakfast / Lunch / Dinner / Snack) award **+1 gem** each; Exercise awards **+5 gems**. Subsequent entries in any category award nothing, closing the water-spam farm path called out in §2.2. Daily logging cap = 4 + 5 = **9 gems/day**. Exercise's +5 animates as five staggered +1 bursts (180 ms apart) for a Duolingo-style cascade; meal entries fire the same single-pulse animation as before. Reduced-motion users get a single combined burst. `users.backfillMyGems` migrated to `(distinct meal category-days × 1) + (distinct exercise days × 5)` without shrinking existing balances. Diary UI: section-level **Save as meal** button (`BookmarkAddOutlined`) now lives on the **left** of each meal header (opposite the `+`), disabled when the section is empty. `AddFoodDialog` Foods/Meals tabs switched to the orange primary palette.
 - ✅ **Weight tracking** (2026-04-29): `convex/weights.ts` now exposes `latest` / `getRecent` queries and `logForDate` / `remove` mutations (one entry per date — same-day re-logs replace). Saving a new weight in Settings → Body Stats also appends a `weights` row for today via a shared `upsertWeightRow` helper, so the Stats Weight chart populates from the user's onboarding weight without a separate logging step. The Diary date-header row got a compact weight chip (left of the kebab) — plain orange text `82.0 kg`, no icon (an icon read as ambiguous in user testing), tap opens `WeightLogDialog`; tooltip shows last-weighed date + days-since. Stats `WeightTrendCard` got a small `+` quick-log icon next to its header subtitle. Both surfaces open the shared `WeightLogDialog` (date picker + kg field) which prefills with the latest known weight. No gem reward on weigh-ins for now (kept in line with §2.2 anti-farm principle); Sunday-cron weekly adjustment will read this table next.
 - ✅ **Stats motivation layer** (2026-04-29): Stats page now leads with a `HeroScoreboardCard` (2×2 grid, ignores range toggle) showing current weight + Δ7d, kg-to-go (or "Reached" / "Recomp" / "Set a goal" → /settings), days on target, and current streak with best-streak caption — copy never goes red, per §2.4. `WeightTrendCard` switched its 7-day SMA overlay to a 0.1-α EWMA (raw weighs faded), added a dashed horizontal target-weight reference line, and a dotted goal-pace diagonal interpolated from first weigh-in to `goal.targetDateISO`; subtitle reads `latest → target · ETA Mon DD '26` (or `holding` / `trend off` / `Goal reached` / maintain band / no-goal fallback) using `projectETA()` (14-day slope extrapolation). `MacroSplitCard` rebuilt as three stacked per-macro bar rows (Protein / Carbs / Fat) each with its own dashed target line and `avg X g · target Y g · ↑/↓ Δ vs prev · on target` caption — finally surfaces macro targets, which the old stacked-area chart didn't. `CalorieIntakeCard` subtitle gains `↑/↓ X vs prev Nd`; `StreakHeatmapCard` subtitle gains `· best Nd`. One Convex query change: `api.stats.getRange` now also returns `longestStreak`, `currentWeightKg`, `goal`, and `prevPeriodAverages` (one extra `meal_logs` `withIndex` read for the prior window) — no schema change, no migration. Also fixed a latent ECharts Calendar crash on empty-data renders (`Cannot read properties of undefined (reading 'toString')`) by always passing an explicit `[start, end]` to the streak heatmap. Helpers: `ewma()` and `projectETA()` in `src/components/stats/statsUtils.ts`.
+- ✅ **Phase 5 v1 — Friends & duo streaks** (2026-04-29): pulled the social slice forward (out of phase order — Felipe wanted it now, see §8). Three additive Convex tables — `friendships` (canonical-pair `userA._id < userB._id`, `pending` / `accepted` / `blocked`), `friend_streaks` (one row per pair, `currentDays` / `longestDays` / `lastBothLoggedDate`), and `cheers` (1-gem positive-only nudges, capped 3/friend/day). New `convex/lib/social.ts` exposes `canonicalPair` + `bumpFriendStreaksForLog(ctx, userId)` which runs after every meal/exercise log: marks the user's `users.lastLoggedDate = today` (Brisbane), then for every accepted friendship where the other side also logged today, extends or starts the duo streak. AEST date helpers extracted to `convex/lib/dateAEST.ts` (shared with `streaks.ts`). `convex/users.ts` adds `getPublicProfile(userId)` and `searchByUsername(query)` — both return a strict allowlist (`_id`, `username`, `displayName`, `currentStreak`, `longestStreak`, `gemBalance`, `joinedAt`); body data is never serialised. `convex/lib/rewards.ts` adds `spendGems` (errors on insufficient balance) used by `convex/cheers.ts:sendCheer`. New `convex/friendships.ts` exposes `listFriends` / `listPendingRequests` / `sendRequest` (auto-accepts mutual pending) / `acceptRequest` / `declineRequest` / `removeFriend` / `block` / `unblock`. Frontend: 4-tab BottomNav (Diary · Kal · Stats · Friends), new `/friends` route, six components under `src/components/friends/` — `FriendsPage`, `FriendStreakCard` (twin avatars + flame + cheer), `FriendRow`, `AddFriendDialog` (debounced username search), `PendingRequestsSection`, `PublicProfileSheet` (bottom drawer). Cheers UI is positive-only — Finch model, no shame copy, no penalty notifications. v2 (Friend Quests) and v3 (Leagues) deferred per §8.
 - ⏭️ **Next:** copy-from-any-day, barcode fallback via Open Food Facts, weekly-adjustment cron (now that `weights` is populating), and CSV export.
 
 ---
@@ -325,12 +326,62 @@ Exercise is logged here but **never added to the calorie budget** (Design Princi
 }
 ```
 
-### Deferred to Phase 5
+### `friendships` (Phase 5 v1, shipped 2026-04-29)
 
-- `friendships { user_a, user_b, status: "pending" | "accepted", created_at }`
-- `challenges { name, type, participants, start_date, end_date, prize_gems, leaderboard }`
+Canonical-pair invariant: every row has `userA._id < userB._id` (string compare). One row per pair regardless of who initiated, which dedupes naturally and avoids OCC contention since each row only mutates when one of the two named users acts.
 
-Noted here so we design current schemas with future compat in mind (no blocker fields, no ownership assumptions).
+```typescript
+{
+  _id: Id<"friendships">,
+  userA: Id<"users">,
+  userB: Id<"users">,
+  status: "pending" | "accepted" | "blocked",
+  initiatedBy: Id<"users">,        // for pending: who sent it; for blocked: who blocked
+  acceptedAt?: number,
+  createdAt: number,
+}
+```
+
+**Indexes:** `by_userA_status`, `by_userB_status`, `by_pair`.
+
+### `friend_streaks` (Phase 5 v1)
+
+One denormalised row per pair, used for the shared "duo" streak. Updated server-side from `convex/lib/social.ts:bumpFriendStreaksForLog` after every meal/exercise log; read-side uses `friendStreakDisplayDays()` to render 0 when neither today nor yesterday match (broken-streak grace day).
+
+```typescript
+{
+  _id: Id<"friend_streaks">,
+  userA: Id<"users">,             // canonical pair, same as friendships
+  userB: Id<"users">,
+  currentDays: number,
+  longestDays: number,
+  lastBothLoggedDate?: string,    // YYYY-MM-DD AEST
+}
+```
+
+**Indexes:** `by_pair`, `by_userA`, `by_userB`.
+
+### `cheers` (Phase 5 v1)
+
+1-gem positive-only nudges, capped at `CHEERS_PER_FRIEND_PER_DAY = 3` per recipient per day. Cheers are not body-data and never expose any food/weight context — they're pure encouragement.
+
+```typescript
+{
+  _id: Id<"cheers">,
+  fromUser: Id<"users">,
+  toUser: Id<"users">,
+  date: string,                   // YYYY-MM-DD AEST
+  createdAt: number,
+}
+```
+
+**Indexes:** `by_toUser_date`, `by_fromUser_toUser_date`.
+
+### Deferred to Phase 5 v2 / v3
+
+- `quests` + `quest_participants` — weekly random-pair 7-day co-op goals (e.g. "10 logged days combined"). v2.
+- `league_periods` + `league_members` — weekly anonymised cohorts of ~20 users, Bronze→Diamond, promote top 5 / demote bottom 3. v3 — highest retention payoff, also highest build cost (cohort cron, tournament logic).
+- `challenges { name, type, participants, start_date, end_date, prize_gems, leaderboard }` — bespoke group challenges. Likely subsumed by quests + leagues once those land.
 
 ### Migration discipline
 
@@ -345,7 +396,7 @@ The logging loop is the whole game. Everything here is Phase 2 unless marked oth
 ### App chrome
 
 - **Top app bar:** **gem balance chip** on the left (`Diamond` icon + count, sapphire `info.main` when active, dimmed `text.disabled` at 0; wired to `user.gemBalance` — earn rules in §8). Phase 2 placeholder rule (shipped 2026-04-27): the **first entry of the day per category** awards gems server-side; subsequent entries in the same category award nothing. Meal categories (Breakfast / Lunch / Dinner / Snack) → **+1 gem** each; Exercise → **+5 gems**. Cap is 9 gems/day from logging — consistent with §2.2 and resilient to spam. Each gem awarded fires its own pulse: Web Audio level-up jingle, `web-haptics` "buzz" haptic, and a canvas particle burst from screen-center homing into the chip (see `src/components/ParticlesProvider.tsx`). Exercise's +5 plays as five staggered +1 bursts (180 ms apart) for a Duolingo-style cascade; meal entries get a single pulse. Reduced-motion users get a single combined burst. Right side of the bar: dark-mode toggle (the only place it lives — light mode is the default and Settings does not duplicate the toggle) and avatar menu (profile/settings/sign-out). The streak chip moved to the Diary day-header row — streaks count logging days, so they belong with the date. MUI `AppBar` with sticky positioning.
-- **Bottom nav (Phase 2):** three tabs — **Diary** · **Stats** · **Settings**. Add **Shop** in Phase 3, **Kal** in Phase 4. MUI `BottomNavigation`, clear active state.
+- **Bottom nav:** four tabs — **Diary** · **Kal** · **Stats** · **Friends** (Friends shipped 2026-04-29 with the Phase 5 v1 social slice). Settings lives in the avatar menu, not the BottomNav. **Shop** still planned for Phase 3. MUI `BottomNavigation`, clear active state.
 - **PWA shell:** installable, matching status-bar theme color, offline-safe diary page (last-logged data cached via Convex local cache + service worker).
 
 ### Diary page (top to bottom)
@@ -485,15 +536,30 @@ Each phase has a concrete **Done when** gate. No phase graduates without it.
 
 **Done when:** logging visibly affects Kal within 5–7 days; outfits can be bought + equipped; nothing about Kal's appearance frames weight/body negatively.
 
-### Phase 5 — Social (only if Felipe still wants it after 2 months solo)
+### Phase 5 — Social
 
-- `friendships` + `challenges` tables via migration.
-- Add friends by username.
-- Pet visits (Pou-style).
-- Group weekly challenges with real-time leaderboards via Convex subscriptions.
-- Web push notifications (PWA) for streak risks and challenge wins.
+Pulled forward of phase order on 2026-04-29 — Felipe wanted the friend slice now rather than waiting on the 2-month dogfood gate. Sliced into three versions so the cheap-but-powerful piece (friend streaks) ships before the expensive one (leagues).
 
-**Done when:** Felipe's gym and Currents mates can add each other, join a group "most-consecutive-logging-days" challenge, and the leaderboard updates live.
+**v1 — Friends + duo streaks + cheers (✅ shipped 2026-04-29):**
+- `friendships` + `friend_streaks` + `cheers` tables (additive — no widen→migrate→narrow needed). See §6.
+- Add friends by username. Auto-accept on mutual pending. Block / unblock.
+- Public profile sheet: display name, username, current/longest solo streak, gem balance, joined date. Body data **never** exposed (§2.4).
+- Shared duo-streak: extends when both users log on the same AEST calendar day (any meal or exercise counts). Read-side derived "alive" check with one-day grace before display falls back to "ready to restart".
+- 1-gem cheers, capped 3/friend/day. `convex/lib/rewards.ts:spendGems` is the gem sink; `awardGems` unchanged.
+- 4-tab BottomNav (Diary · Kal · Stats · Friends).
+- Done-when gate ✅: two accounts can add, accept, both log on the same day → shared streak shows; cheer button decrements gems.
+
+**v2 — Friend Quests (next):**
+- Weekly random-pair 7-day co-op goal ("10 logged days combined"). Shared gem reward, no penalty if missed — resets next week. Tables: `quests`, `quest_participants`.
+
+**v3 — Leagues (last, highest cost):**
+- Weekly anonymised cohorts of ~20 users, Bronze→Diamond, promote top 5 / demote bottom 3. Cohort-assignment cron, weekly reset. Highest documented retention lever in research, but also the most expensive build — defer until v1 + v2 prove the social loop.
+
+**Cross-version:**
+- Pet visits (Pou-style, Phase 4-dependent) — once `users.pet` ships, surface `pet.stage` + active cosmetic on the public profile.
+- Web push notifications (PWA) for streak-at-risk and challenge wins. Spammy notifications are the documented #1 churn cause; cap at one daily summary.
+
+**Done when:** Felipe's gym and Currents mates can add each other, hold a duo streak across a week, and a meaningful share of them stay logged in past day 14 because of the social loop (v2/v3 measured separately).
 
 ### Phase 6 — AI-assisted logging (optional, paid tier if ever monetised)
 
@@ -607,5 +673,6 @@ Phase 0 scaffold and the Phase 2 app-shell UI (Diary + Stats + Settings skeleton
 3. **Barcode fallback.** Implement the Open Food Facts HTTP action and client barcode flow (local `foods.barcode` first, OFF second, cache as `openfoodfacts_cache`). Keep USDA as env-only backup, not active product scope.
 4. **Phase 2 fill-in.** Onboarding wizard (wraps the 3 Settings cards into a first-run flow), weekly-adjustment Convex cron (Sunday 02:00 AEST — `weights` table is now populating, so this is unblocked), CSV export.
 5. **Dogfood for 14 consecutive days** without switching back to Cronometer — the Phase 2 done-when gate.
+6. **Smoke-test Phase 5 v1 with a second account.** Add a friend, both log on the same day, watch the duo streak appear; cheer them and verify gem balance drops by 1 with the 3/day cap. See §13 verification list (mirrored from the plan file).
 
-Pet and social come later. Logging is the whole game until it feels better than Cronometer.
+Pet evolution still comes later. Logging is the whole game until it feels better than Cronometer; the Friends slice is the second hook now that the first one works.

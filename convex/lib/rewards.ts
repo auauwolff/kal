@@ -20,6 +20,29 @@ export const awardGems = async (
   });
 };
 
+export const spendGems = async (
+  ctx: MutationCtx,
+  userId: Id<'users'>,
+  amount: number,
+): Promise<number> => {
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error('Spend amount must be positive');
+  }
+
+  const user = await ctx.db.get(userId);
+  if (!user) throw new Error('User not found');
+  if (user.gemBalance < amount) {
+    throw new Error('Not enough gems');
+  }
+
+  const nextBalance = user.gemBalance - amount;
+  await ctx.db.patch(userId, {
+    gemBalance: nextBalance,
+    updatedAt: Date.now(),
+  });
+  return nextBalance;
+};
+
 export const isFirstMealEntryOfDay = async (
   ctx: MutationCtx,
   userId: Id<'users'>,

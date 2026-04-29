@@ -3,6 +3,7 @@ import { mutation, query } from './_generated/server';
 import type { Doc } from './_generated/dataModel';
 import { ensureAuthUser, getAuthUserOrNull, requireAuth } from './lib/auth';
 import { awardGems, GEMS_PER_EXERCISE_LOG, isFirstExerciseEntryOfDay } from './lib/rewards';
+import { bumpFriendStreaksForLog } from './lib/social';
 import { recomputeAndPatchStreak } from './lib/streaks';
 import { exerciseIntensityValidator, exerciseTypeValidator } from './validators';
 
@@ -61,6 +62,7 @@ export const add = mutation({
       loggedAt: Date.now(),
     });
     await recomputeAndPatchStreak(ctx, user._id);
+    await bumpFriendStreaksForLog(ctx, user._id);
     let gemsAwarded = 0;
     if (isFirst) {
       await awardGems(ctx, user._id, GEMS_PER_EXERCISE_LOG);

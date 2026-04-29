@@ -1,13 +1,35 @@
 import { v } from 'convex/values';
 import { mutation, query } from './_generated/server';
+import type { Doc, Id } from './_generated/dataModel';
 import { ensureAuthUser, getAuthUserOrNull, requireAuth } from './lib/auth';
 import { GEMS_PER_EXERCISE_LOG, GEMS_PER_MEAL_LOG } from './lib/rewards';
+import { canonicalPair } from './lib/social';
 import {
   bodyStatsValidator,
   userTargetsValidator,
   weightGoalValidator,
 } from './validators';
 import { upsertWeightRow } from './weights';
+
+interface PublicProfile {
+  _id: Id<'users'>;
+  username: string;
+  displayName: string;
+  currentStreak: number;
+  longestStreak: number;
+  gemBalance: number;
+  joinedAt: number;
+}
+
+const toPublicProfile = (user: Doc<'users'>): PublicProfile => ({
+  _id: user._id,
+  username: user.username,
+  displayName: user.displayName,
+  currentStreak: user.currentStreak,
+  longestStreak: user.longestStreak,
+  gemBalance: user.gemBalance,
+  joinedAt: user.createdAt,
+});
 
 const todayISO = (): string => {
   const date = new Date();
@@ -91,5 +113,60 @@ export const upsertProfile = mutation({
     }
 
     return await ctx.db.get(user._id);
+  },
+});
+
+const SEARCH_USERNAME_LIMIT = 10;
+
+export const searchByUsername = query({
+  args: { query: v.string() },
+  handler: async (ctx, { query: rawQuery }): Promise<PublicProfile[]> => {
+    const me = await getAuthUserOrNull(ctx);
+    if (!me) return [];
+
+    const prefix = rawQuery.trim().toLowerCase();
+    if (prefix.length < 2) return [];
+
+    const results = await ctx.db
+      .query('users')
+      .withIndex('by_username', (q) =>
+        q.gte('username', prefix).lt('username', `${prefix}￿`),
+      )
+      .take(SEARCH_USERNAME_LIMIT * 3);
+
+    const profiles: PublicProfile[] = [];
+    for (const user of results) {
+      if (user._id === me._id) continue;
+      const { userA, userB } = canonicalPair(me._id, user._id);
+      const friendship = await ctx.db
+        .query('friendships')
+        .withIndex('by_pair', (q) => q.eq('userA', userA).eq('userB', userB))
+        .unique();
+      if (friendship?.status === 'blocked') continue;
+      profiles.push(toPublicProfile(user));
+      if (profiles.length >= SEARCH_USERNAME_LIMIT) break;
+    }
+    return profiles;
+  },
+});
+
+export const getPublicProfile = query({
+  args: { userId: v.id('users') },
+  handler: async (ctx, { userId }): Promise<PublicProfile | null> => {
+    const me = await getAuthUserOrNull(ctx);
+    if (!me) return null;
+    if (me._id === userId) return toPublicProfile(me);
+
+    const target = await ctx.db.get(userId);
+    if (!target) return null;
+
+    const { userA, userB } = canonicalPair(me._id, userId);
+    const friendship = await ctx.db
+      .query('friendships')
+      .withIndex('by_pair', (q) => q.eq('userA', userA).eq('userB', userB))
+      .unique();
+    if (friendship?.status === 'blocked') return null;
+
+    return toPublicProfile(target);
   },
 });

@@ -3,6 +3,7 @@ import { mutation, query } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
 import { ensureAuthUser, getAuthUserOrNull, requireAuth } from './lib/auth';
 import { awardGems, GEMS_PER_MEAL_LOG, isFirstMealEntryOfDay } from './lib/rewards';
+import { bumpFriendStreaksForLog } from './lib/social';
 import { recomputeAndPatchStreak } from './lib/streaks';
 import { recomputeAndPatchDaySnapshot } from './lib/dayTotals';
 import { mealTypeValidator } from './validators';
@@ -180,6 +181,7 @@ export const add = mutation({
 
     await recomputeAndPatchDaySnapshot(ctx, user._id, date);
     await recomputeAndPatchStreak(ctx, user._id);
+    await bumpFriendStreaksForLog(ctx, user._id);
     let gemsAwarded = 0;
     if (isFirst) {
       await awardGems(ctx, user._id, GEMS_PER_MEAL_LOG);
@@ -220,6 +222,7 @@ export const relog = mutation({
 
     await recomputeAndPatchDaySnapshot(ctx, user._id, date);
     await recomputeAndPatchStreak(ctx, user._id);
+    await bumpFriendStreaksForLog(ctx, user._id);
     let gemsAwarded = 0;
     if (isFirst) {
       await awardGems(ctx, user._id, GEMS_PER_MEAL_LOG);
@@ -268,6 +271,7 @@ export const copyDay = mutation({
 
     await recomputeAndPatchDaySnapshot(ctx, user._id, toDate);
     await recomputeAndPatchStreak(ctx, user._id);
+    await bumpFriendStreaksForLog(ctx, user._id);
     return { copied };
   },
 });
