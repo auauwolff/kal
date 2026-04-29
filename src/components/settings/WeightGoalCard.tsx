@@ -13,7 +13,7 @@ import { calorieTargetForGoal, type GoalType } from '@/lib/nutrition';
 import { stripLeadingZeros } from '@/lib/numericInput';
 import { todayISO } from '@/lib/date';
 import { useFormDraft } from '@/hooks/useFormDraft';
-import { useUserProfile } from '@/hooks/useUserProfile';
+import { useProfileDraft } from '@/hooks/useProfileDraft';
 import {
   GOAL_OPTIONS,
   weightGoalFromForm,
@@ -22,7 +22,7 @@ import {
 } from './settingsUtils';
 
 export const WeightGoalCard = () => {
-  const { bodyStats: stats, goal, setGoal } = useUserProfile();
+  const { bodyStats: stats, goal, setGoal } = useProfileDraft();
 
   const currentWeightKg = stats?.weightKg;
 

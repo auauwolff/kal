@@ -26,6 +26,10 @@ const KCAL_PER_KG_BODYWEIGHT = 7700;
 const MAX_LOSS_RATE_PER_WEEK = 0.01;
 const MAX_GAIN_RATE_PER_WEEK = 0.005;
 const MIN_DAILY_CALORIES = 1500;
+// Brain-glucose floor — never drop computed carbs below this.
+const MIN_CARB_FLOOR_G = 50;
+// Lower clinical floor for essential-fatty-acid intake.
+const MIN_FAT_PER_KG = 0.6;
 
 export interface BmrInput {
   weightKg: number;
@@ -62,13 +66,24 @@ export const calorieTargetForGoal = (
   p: CalorieGoalInput,
 ): CalorieGoalResult => {
   const maintenance = tdee(p);
+  const targetMs = Date.parse(p.targetDateISO);
+  const todayMs = Date.parse(p.todayISO);
+  if (!Number.isFinite(targetMs) || !Number.isFinite(todayMs)) {
+    // Invalid date — fall back to maintenance so the UI never shows NaN.
+    const calories = Math.max(
+      MIN_DAILY_CALORIES,
+      Math.round(maintenance / 10) * 10,
+    );
+    return {
+      calories,
+      maintenance: Math.round(maintenance),
+      dailyDelta: 0,
+      weeklyDeltaKg: 0,
+      clamped: false,
+    };
+  }
   const deltaKg = p.targetWeightKg - p.weightKg;
-  const days = Math.max(
-    1,
-    Math.round(
-      (Date.parse(p.targetDateISO) - Date.parse(p.todayISO)) / 86_400_000,
-    ),
-  );
+  const days = Math.max(1, Math.round((targetMs - todayMs) / 86_400_000));
   const requiredDaily = (deltaKg * KCAL_PER_KG_BODYWEIGHT) / days;
   const maxLossPerDay =
     (p.weightKg * MAX_LOSS_RATE_PER_WEEK * KCAL_PER_KG_BODYWEIGHT) / 7;
@@ -103,6 +118,13 @@ export interface MacroResult {
   proteinG: number;
   carbsG: number;
   fatG: number;
+  // The calorie total the macros actually sum to. Equals the input
+  // `calorieTarget` in the common case, but can be higher when protein + a
+  // minimum-viable fat + the carb floor exceed the input — in that corner the
+  // 1500 kcal floor must yield so macros stay coherent. KAL.md §5 calls out
+  // that under-eating risk outweighs over-eating risk, so lifting calories
+  // here is intentional.
+  effectiveCalories: number;
 }
 
 export const macroTargets = ({
@@ -111,12 +133,24 @@ export const macroTargets = ({
   goal,
 }: MacroInput): MacroResult => {
   const proteinPerKg = goal === 'lose' || goal === 'recomp' ? 2.2 : 1.8;
-  const fatPerKg = 0.9;
   const proteinG = Math.round(weightKg * proteinPerKg);
-  const fatG = Math.round(weightKg * fatPerKg);
-  const carbsG = Math.max(
-    0,
-    Math.round((calorieTarget - proteinG * 4 - fatG * 9) / 4),
-  );
-  return { proteinG, carbsG, fatG };
+  const minFatG = Math.round(weightKg * MIN_FAT_PER_KG);
+  const proteinKcal = proteinG * 4;
+  const minCarbKcal = MIN_CARB_FLOOR_G * 4;
+  const minViableCalories = proteinKcal + minFatG * 9 + minCarbKcal;
+  const effectiveCalories = Math.max(calorieTarget, minViableCalories);
+
+  let fatG = Math.round(weightKg * 0.9);
+  let carbsG = Math.round((effectiveCalories - proteinKcal - fatG * 9) / 4);
+
+  if (carbsG < MIN_CARB_FLOOR_G) {
+    const remainingForFat = effectiveCalories - proteinKcal - minCarbKcal;
+    fatG = Math.max(minFatG, Math.floor(remainingForFat / 9));
+    carbsG = Math.max(
+      MIN_CARB_FLOOR_G,
+      Math.round((effectiveCalories - proteinKcal - fatG * 9) / 4),
+    );
+  }
+
+  return { proteinG, carbsG, fatG, effectiveCalories };
 };

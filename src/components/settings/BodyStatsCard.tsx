@@ -10,7 +10,7 @@ import {
 import { ACTIVITY_LABELS, type ActivityLevel, type Sex } from '@/lib/nutrition';
 import { stripLeadingZeros } from '@/lib/numericInput';
 import { useFormDraft } from '@/hooks/useFormDraft';
-import { useUserProfile } from '@/hooks/useUserProfile';
+import { useProfileDraft } from '@/hooks/useProfileDraft';
 import {
   ACTIVITY_ORDER,
   bodyStatsFromForm,
@@ -19,7 +19,7 @@ import {
 } from './settingsUtils';
 
 export const BodyStatsCard = () => {
-  const { bodyStats: stats, setBodyStats } = useUserProfile();
+  const { bodyStats: stats, setBodyStats } = useProfileDraft();
 
   const { form, setField, commit, commitWith } = useFormDraft({
     source: stats,

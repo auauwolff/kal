@@ -11,7 +11,7 @@ import {
 import { RestartAlt } from '@mui/icons-material';
 import type { UserTargets } from '@/lib/userTypes';
 import { stripLeadingZeros } from '@/lib/numericInput';
-import { useUserProfile } from '@/hooks/useUserProfile';
+import { useProfileDraft } from '@/hooks/useProfileDraft';
 import {
   DAILY_TARGET_FIELDS,
   targetsDraftFromTargets,
@@ -19,7 +19,7 @@ import {
 } from './settingsUtils';
 
 export const DailyTargetsCard = () => {
-  const { targets, autoTargets, setTarget, resetTargetsToAuto } = useUserProfile();
+  const { targets, autoTargets, setTarget, resetTargetsToAuto } = useProfileDraft();
 
   const currentTargetsKey = targetsKey(targets);
 
