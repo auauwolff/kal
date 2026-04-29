@@ -40,35 +40,39 @@ export const MacroSplitCard = () => {
   const dates = data.map((d) => d.date);
   const prev = stats?.prevPeriodAverages ?? null;
 
+  const proteinVals = data.map((d) => Math.round(d.proteinG));
+  const carbsVals = data.map((d) => Math.round(d.carbsG));
+  const fatVals = data.map((d) => Math.round(d.fatG));
+
   const rows: MacroRow[] = [
     {
       key: 'protein',
       label: 'Protein',
-      values: data.map((d) => Math.round(d.proteinG)),
+      values: proteinVals,
       target: data[0]?.targetProteinG ?? 0,
-      avg: 0,
+      avg: average(proteinVals),
       prevAvg: prev?.proteinG ?? null,
       baseColor: theme.palette.success.main,
     },
     {
       key: 'carbs',
       label: 'Carbs',
-      values: data.map((d) => Math.round(d.carbsG)),
+      values: carbsVals,
       target: data[0]?.targetCarbsG ?? 0,
-      avg: 0,
+      avg: average(carbsVals),
       prevAvg: prev?.carbsG ?? null,
       baseColor: theme.palette.warning.main,
     },
     {
       key: 'fat',
       label: 'Fat',
-      values: data.map((d) => Math.round(d.fatG)),
+      values: fatVals,
       target: data[0]?.targetFatG ?? 0,
-      avg: 0,
+      avg: average(fatVals),
       prevAvg: prev?.fatG ?? null,
       baseColor: theme.palette.secondary.main,
     },
-  ].map((row) => ({ ...row, avg: average(row.values) }));
+  ];
 
   const grids = rows.map((_, i) => ({
     left: 56,
