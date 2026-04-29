@@ -30,6 +30,7 @@ import {
 } from '@mui/icons-material';
 import { useQuery } from 'convex/react';
 import toast from 'react-hot-toast';
+import { NumberField } from '@/components/NumberField';
 import { api } from '../../../convex/_generated/api';
 import type { Doc } from '../../../convex/_generated/dataModel';
 import type { MealLog } from './types';
@@ -533,11 +534,10 @@ export const AddFoodDialog = ({ open, mealType, onClose }: AddFoodDialogProps) =
             </Stack>
           </Box>
 
-          <TextField
+          <NumberField
             label="Or enter grams"
-            type="number"
             value={quantityG}
-            onChange={(e) => setQuantityG(Math.max(0, Number(e.target.value)))}
+            onChange={setQuantityG}
             slotProps={{
               input: {
                 endAdornment: <InputAdornment position="end">g</InputAdornment>,

@@ -10,6 +10,7 @@ import {
 } from '@mui/material';
 import { RestartAlt } from '@mui/icons-material';
 import type { UserTargets } from '@/lib/userTypes';
+import { stripLeadingZeros } from '@/lib/numericInput';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import {
   DAILY_TARGET_FIELDS,
@@ -78,7 +79,10 @@ export const DailyTargetsCard = () => {
                 inputMode="numeric"
                 value={draft[f.key]}
                 onChange={(e) =>
-                  setDraft((prev) => ({ ...prev, [f.key]: e.target.value }))
+                  setDraft((prev) => ({
+                    ...prev,
+                    [f.key]: stripLeadingZeros(e.target.value),
+                  }))
                 }
                 onBlur={() => commitField(f.key, draft[f.key])}
                 slotProps={{ input: { endAdornment: f.unit } }}

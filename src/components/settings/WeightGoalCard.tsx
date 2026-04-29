@@ -10,6 +10,7 @@ import {
   Typography,
 } from '@mui/material';
 import { calorieTargetForGoal, type GoalType } from '@/lib/nutrition';
+import { stripLeadingZeros } from '@/lib/numericInput';
 import { todayISO } from '@/lib/date';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -94,7 +95,9 @@ export const WeightGoalCard = () => {
                 type="number"
                 inputMode="decimal"
                 value={form.targetWeightKg}
-                onChange={(e) => setField('targetWeightKg', e.target.value)}
+                onChange={(e) =>
+                  setField('targetWeightKg', stripLeadingZeros(e.target.value))
+                }
                 onBlur={commit}
                 slotProps={{ input: { endAdornment: 'kg' } }}
                 fullWidth

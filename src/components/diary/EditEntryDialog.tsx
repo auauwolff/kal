@@ -9,12 +9,12 @@ import {
   IconButton,
   InputAdornment,
   Stack,
-  TextField,
   Toolbar,
   Typography,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
+import { NumberField } from '@/components/NumberField';
 import { Close as CloseIcon, DeleteOutline } from '@mui/icons-material';
 import { useQuery } from 'convex/react';
 import toast from 'react-hot-toast';
@@ -161,11 +161,10 @@ export const EditEntryDialog = ({ open, entry, onClose }: EditEntryDialogProps) 
               </Stack>
             </Box>
 
-            <TextField
+            <NumberField
               label="Or enter grams"
-              type="number"
               value={quantityG}
-              onChange={(e) => onGramsChange(Number(e.target.value))}
+              onChange={onGramsChange}
               slotProps={{
                 input: {
                   endAdornment: <InputAdornment position="end">g</InputAdornment>,

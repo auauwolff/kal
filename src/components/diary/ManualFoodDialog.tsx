@@ -17,6 +17,7 @@ import {
 import { Close as CloseIcon } from '@mui/icons-material';
 import { useMutation } from 'convex/react';
 import toast from 'react-hot-toast';
+import { NumberField } from '@/components/NumberField';
 import { api } from '../../../convex/_generated/api';
 import { MEAL_LABELS, type MealType } from './types';
 import { useDiary } from './useDiary';
@@ -110,27 +111,38 @@ export const ManualFoodDialog = ({
     }
   };
 
-  const numField = (
+  const requiredNumField = (
     label: string,
-    value: number | '',
+    value: number,
     onChange: (v: number) => void,
     suffix: string,
-    optional = false,
   ) => (
-    <TextField
-      label={optional ? `${label} (optional)` : label}
-      type="number"
+    <NumberField
+      label={label}
       value={value}
       size="small"
-      onChange={(e) => {
-        const raw = e.target.value;
-        if (raw === '') {
-          if (optional) onChange(NaN);
-          else onChange(0);
-        } else {
-          onChange(Math.max(0, Number(raw)));
-        }
+      onChange={onChange}
+      slotProps={{
+        input: {
+          endAdornment: <InputAdornment position="end">{suffix}</InputAdornment>,
+        },
+        htmlInput: { min: 0, inputMode: 'decimal', step: 0.1 },
       }}
+    />
+  );
+
+  const optionalNumField = (
+    label: string,
+    value: number | '',
+    onChange: (v: number | '') => void,
+    suffix: string,
+  ) => (
+    <NumberField
+      label={`${label} (optional)`}
+      value={value}
+      allowEmpty
+      size="small"
+      onChange={onChange}
       slotProps={{
         input: {
           endAdornment: <InputAdornment position="end">{suffix}</InputAdornment>,
@@ -186,11 +198,10 @@ export const ManualFoodDialog = ({
           onChange={(e) => setBrand(e.target.value)}
         />
 
-        <TextField
+        <NumberField
           label="Default serving"
-          type="number"
           value={defaultServingG}
-          onChange={(e) => setDefaultServingG(Math.max(0, Number(e.target.value)))}
+          onChange={setDefaultServingG}
           slotProps={{
             input: {
               endAdornment: <InputAdornment position="end">g</InputAdornment>,
@@ -203,46 +214,28 @@ export const ManualFoodDialog = ({
 
         <Stack direction="row" gap={1.5} flexWrap="wrap">
           <Box sx={{ flex: '1 1 120px' }}>
-            {numField('Calories', calories, setCalories, 'kcal')}
+            {requiredNumField('Calories', calories, setCalories, 'kcal')}
           </Box>
           <Box sx={{ flex: '1 1 120px' }}>
-            {numField('Protein', proteinG, setProteinG, 'g')}
+            {requiredNumField('Protein', proteinG, setProteinG, 'g')}
           </Box>
           <Box sx={{ flex: '1 1 120px' }}>
-            {numField('Carbs', carbsG, setCarbsG, 'g')}
+            {requiredNumField('Carbs', carbsG, setCarbsG, 'g')}
           </Box>
           <Box sx={{ flex: '1 1 120px' }}>
-            {numField('Fat', fatG, setFatG, 'g')}
+            {requiredNumField('Fat', fatG, setFatG, 'g')}
           </Box>
         </Stack>
 
         <Stack direction="row" gap={1.5} flexWrap="wrap">
           <Box sx={{ flex: '1 1 120px' }}>
-            {numField(
-              'Fiber',
-              fiberG,
-              (v) => setFiberG(Number.isNaN(v) ? '' : v),
-              'g',
-              true,
-            )}
+            {optionalNumField('Fiber', fiberG, setFiberG, 'g')}
           </Box>
           <Box sx={{ flex: '1 1 120px' }}>
-            {numField(
-              'Sugar',
-              sugarG,
-              (v) => setSugarG(Number.isNaN(v) ? '' : v),
-              'g',
-              true,
-            )}
+            {optionalNumField('Sugar', sugarG, setSugarG, 'g')}
           </Box>
           <Box sx={{ flex: '1 1 120px' }}>
-            {numField(
-              'Sodium',
-              sodiumMg,
-              (v) => setSodiumMg(Number.isNaN(v) ? '' : v),
-              'mg',
-              true,
-            )}
+            {optionalNumField('Sodium', sodiumMg, setSodiumMg, 'mg')}
           </Box>
         </Stack>
 

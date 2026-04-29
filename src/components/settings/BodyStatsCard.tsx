@@ -8,6 +8,7 @@ import {
   Typography,
 } from '@mui/material';
 import { ACTIVITY_LABELS, type ActivityLevel, type Sex } from '@/lib/nutrition';
+import { stripLeadingZeros } from '@/lib/numericInput';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import {
@@ -53,7 +54,7 @@ export const BodyStatsCard = () => {
               type="number"
               inputMode="numeric"
               value={form.heightCm}
-              onChange={(e) => setField('heightCm', e.target.value)}
+              onChange={(e) => setField('heightCm', stripLeadingZeros(e.target.value))}
               onBlur={commit}
               slotProps={{ input: { endAdornment: 'cm' } }}
               fullWidth
@@ -63,7 +64,7 @@ export const BodyStatsCard = () => {
               type="number"
               inputMode="decimal"
               value={form.weightKg}
-              onChange={(e) => setField('weightKg', e.target.value)}
+              onChange={(e) => setField('weightKg', stripLeadingZeros(e.target.value))}
               onBlur={commit}
               slotProps={{ input: { endAdornment: 'kg' } }}
               fullWidth
@@ -73,7 +74,7 @@ export const BodyStatsCard = () => {
               type="number"
               inputMode="numeric"
               value={form.age}
-              onChange={(e) => setField('age', e.target.value)}
+              onChange={(e) => setField('age', stripLeadingZeros(e.target.value))}
               onBlur={commit}
               fullWidth
             />

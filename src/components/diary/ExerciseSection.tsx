@@ -26,6 +26,7 @@ import {
   DeleteOutline,
 } from '@mui/icons-material';
 import toast from 'react-hot-toast';
+import { stripLeadingZeros } from '@/lib/numericInput';
 import type { ExerciseIntensity, ExerciseType } from './types';
 import { EXERCISE_LABELS } from './types';
 import {
@@ -193,7 +194,7 @@ export const ExerciseSection = () => {
               label="Duration"
               type="number"
               value={durationMin}
-              onChange={(event) => setDurationMin(event.target.value)}
+              onChange={(event) => setDurationMin(stripLeadingZeros(event.target.value))}
               slotProps={{
                 input: { endAdornment: 'min' },
                 htmlInput: { min: 1, inputMode: 'numeric' },
